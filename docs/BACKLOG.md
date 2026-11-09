@@ -28,10 +28,10 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 
 ## P2 — done ✅
 
-- ✅ **Desktop apps**: macOS built and self-tested here (plays a song, renders tab, no CSP errors); Linux AppImage and Windows zip cross-built here; `release.yml` builds and self-tests all three on tag. Code signing/notarisation still needs your certificates.
+- ✅ **Desktop apps**: v0.1.0 released (https://github.com/jb-612/guitar-cords/releases/tag/v0.1.0) with macOS (.dmg/.zip), Windows (.exe/.zip) and Linux (.AppImage/.deb). Each packaged app was self-tested on real GitHub machines (plays a song, renders tab, no CSP errors); the Mac app is installed and Google sign-in verified. Code signing/notarisation still needs your certificates.
 - ✅ **Electron security**: local loopback server, CSP, sandbox, navigation lock; Google sign-in works in the packaged app.
-- ✅ **Installable web app (PWA)**: manifest, icons, offline cache, verified to reload offline; GitHub Pages deploy.
-- ◐ **Real phones**: emulated iPhone 15 and Pixel 8 with touch (`npm run test:mobile`), which found and fixed 3 touch bugs. **Not yet tried on physical devices.**
+- ✅ **Installable web app (PWA)**: live at https://jb-612.github.io/guitar-cords/ (deployed on every push); verified there: installable manifest, offline cache, reload with no network, Google sign-in.
+- ◐ **Real phones**: emulated iPhone 15 and Pixel 8 with touch (`npm run test:mobile`). **Not yet tried on physical devices**: open the web app link on a phone and "Add to Home Screen".
 - ✅ Count-in, volumes, guitar sound, strum presets, swing feel, drum fills/crash/ending, speed trainer.
 - ✅ Sections, repeats and endings, song-wide capo, multi-select with copy/cut/paste/delete.
 - ✅ Export Guitar Pro / MusicXML / MIDI / song file, print or PDF chord sheet, share links, import.
@@ -64,9 +64,8 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 
 ## Still open
 
-- **Physical devices**: tested only in iPhone/Pixel emulation.
-- **Code signing / notarisation** for the desktop apps: needs your Apple and Windows certificates.
-- **Firebase**: sync is built but stays offline until `VITE_FIREBASE_*` is set in `.env.local` (see `.env.example`).
+- **Physical phones**: the web app is live, so this only needs a real iPhone and Android phone to try it.
+- **Code signing / notarisation** for the desktop apps: needs your Apple and Windows certificates (unsigned apps need right-click → Open on first launch on other Macs).
 - Tab entry is one event at a time; a fretboard-tap entry mode and techniques (hammer-on, slide, bend) would make riffs faster to write.
 
 ## Out of scope for now
