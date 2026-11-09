@@ -15,6 +15,7 @@ import {
   createSong,
   deleteBar,
   duplicateBar,
+  moveBar,
   moveHit,
   replaceHit,
   sameVoicingCount,
@@ -77,6 +78,7 @@ export function App() {
         onHitTap={(id) => setOverlay({ kind: 'hit', id })}
         onBarMenu={(index) => setOverlay({ kind: 'bar', index })}
         onMoveHit={(from, to, copy) => setSong((s) => moveHit(s, from, to, { copy }))}
+        onMoveBar={(from, to) => setSong((s) => moveBar(s, from, to))}
       />
       <Transport song={song} player={player} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
@@ -204,6 +206,7 @@ function BarOptions({ song, close, apply, index }: OverlayProps & { index: numbe
         onTempo={(bpm) => apply((s) => setTempoFrom(s, index, bpm), true)}
         onInsert={(where) => apply((s) => insertBar(s, where === 'before' ? index : index + 1))}
         onDuplicate={() => apply((s) => duplicateBar(s, index))}
+        onMove={(to) => apply((s) => moveBar(s, index, to))}
         onDelete={() => apply((s) => deleteBar(s, index))}
         onClose={close}
       />

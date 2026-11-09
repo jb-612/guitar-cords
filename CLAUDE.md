@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Mobile-first guitar chord and song editor for the web and desktop. React + TypeScript (Vite), wrapped by Electron. Product decisions, features and milestones are in `docs/DESIGN.md`; read it before starting a feature.
+Mobile-first guitar chord and song editor for the web and desktop. React + TypeScript (Vite), wrapped by Electron. Product decisions, features and milestones are in `docs/DESIGN.md`; open work is in `docs/BACKLOG.md` (keep it updated when finishing or adding items). Read both before starting a feature.
 
 ## Commands
 

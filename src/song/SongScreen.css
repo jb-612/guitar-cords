@@ -371,3 +371,74 @@
   box-shadow: var(--shadow-lift);
   animation: pop var(--t-fast) var(--ease-spring);
 }
+
+/* Bar reordering */
+.bar-grip {
+  position: relative;
+  z-index: 3;
+  width: 22px;
+  height: 24px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.55;
+  transition: opacity var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+
+.bar:hover .bar-grip,
+.bar-grip:focus-visible {
+  opacity: 1;
+}
+
+.bar-grip:hover {
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+.bar-grip:active {
+  cursor: grabbing;
+}
+
+.bar.is-moving {
+  opacity: 0.4;
+  transform: scale(0.97);
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+
+.bar-drop-line {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  z-index: 4;
+  width: 4px;
+  border-radius: 4px;
+  background: var(--brass);
+  box-shadow: 0 0 0 4px var(--brass-glow);
+  animation: drop-line-in var(--t-fast) var(--ease-out);
+}
+
+.bar-drop-line.before {
+  left: -8px;
+}
+
+.bar-drop-line.after {
+  right: -8px;
+}
+
+.bar-chip {
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+
+@keyframes drop-line-in {
+  from {
+    transform: scaleY(0.3);
+    opacity: 0;
+  }
+}

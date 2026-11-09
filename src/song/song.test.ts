@@ -5,6 +5,7 @@ import {
   createSong,
   deleteBar,
   duplicateBar,
+  moveBar,
   moveHit,
   replaceHit,
   sameVoicingCount,
@@ -229,6 +230,48 @@ describe('replaceHit (one hit only, e.g. a bass walk)', () => {
     const s0 = add(add(add(createSong(), 'G', QUARTER), 'G', QUARTER), 'C', HALF);
     expect(sameVoicingCount(s0, s0.bars[0]!.events[0]!.id)).toBe(1);
     expect(sameVoicingCount(s0, s0.bars[0]!.events[2]!.id)).toBe(0);
+  });
+});
+
+describe('moveBar (reorder bars)', () => {
+  const abc = () => {
+    const s = addAll(createSong(), ['A', 'B', 'C']);
+    return setLyrics(s, s.bars[0]!.id, 'first');
+  };
+  const order = (s: Song) => s.bars.map((b) => (b.events[0] as { symbol?: string }).symbol ?? '-');
+
+  it('moves a bar later or earlier', () => {
+    expect(order(moveBar(abc(), 0, 2))).toEqual(['B', 'C', 'A']);
+    expect(order(moveBar(abc(), 2, 0))).toEqual(['C', 'A', 'B']);
+    expect(order(moveBar(abc(), 1, 2))).toEqual(['A', 'C', 'B']);
+  });
+
+  it('carries the bar\'s lyrics with it', () => {
+    expect(moveBar(abc(), 0, 2).bars[2]!.lyrics).toBe('first');
+  });
+
+  it('ignores moves to the same place or out of range', () => {
+    const s = abc();
+    expect(moveBar(s, 1, 1)).toBe(s);
+    expect(moveBar(s, 0, 5)).toBe(s);
+    expect(moveBar(s, -1, 0)).toBe(s);
+  });
+
+  it('each bar keeps its own time signature, and change markers are recalculated', () => {
+    const s0 = setTimeSignatureFrom(abc(), 1, { beats: 3, unit: 4 }); // A 4/4, B 3/4, C 3/4
+    const s = moveBar(s0, 1, 2); // A, C, B
+    expect([0, 1, 2].map((i) => barTimeSignature(s, i).beats)).toEqual([4, 3, 3]);
+    expect(s.bars.map((b) => b.timeSignature?.beats)).toEqual([undefined, 3, undefined]);
+    expectFullBars(s);
+  });
+
+  it('moving a bar to the front makes its meter and tempo the song\'s', () => {
+    const s0 = setTempoFrom(setTimeSignatureFrom(abc(), 2, { beats: 6, unit: 8 }), 2, 140); // C: 6/8 at 140
+    const s = moveBar(s0, 2, 0); // C, A, B
+    expect(s.timeSignature).toEqual({ beats: 6, unit: 8 });
+    expect(s.tempo).toBe(140);
+    expect([0, 1, 2].map((i) => [barTimeSignature(s, i).beats, tempoAt(s, i)])).toEqual([[6, 140], [4, 90], [4, 90]]);
+    expect(s.bars[0]).toMatchObject({ timeSignature: undefined, tempo: undefined });
   });
 });
 

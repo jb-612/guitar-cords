@@ -347,6 +347,33 @@ export function insertBar(song: Song, index: number): Song {
   return normalize({ ...song, bars });
 }
 
+/** A bar with the meter and tempo actually in effect there. */
+interface PlacedBar {
+  bar: Bar;
+  ts: TimeSignature;
+  tempo: number;
+}
+
+const tsChange = (prev: PlacedBar | undefined, cur: PlacedBar) => (prev && !sameTimeSignature(prev.ts, cur.ts) ? cur.ts : undefined);
+const tempoChange = (prev: PlacedBar | undefined, cur: PlacedBar) => (prev && prev.tempo !== cur.tempo ? cur.tempo : undefined);
+
+/** Rebuild change markers from each bar's own meter/tempo: a marker only where a bar differs from the one before. */
+function withMarkers(song: Song, placed: PlacedBar[]): Song {
+  const bars = placed.map((p, i) => ({ ...p.bar, timeSignature: tsChange(placed[i - 1], p), tempo: tempoChange(placed[i - 1], p) }));
+  return { ...song, timeSignature: placed[0]!.ts, tempo: placed[0]!.tempo, bars };
+}
+
+const inBars = (song: Song, i: number) => i >= 0 && i < song.bars.length;
+
+/** Move bar `from` to position `to`. Every bar keeps its own time signature and tempo. */
+export function moveBar(song: Song, from: number, to: number): Song {
+  if (from === to || !inBars(song, from) || !inBars(song, to)) return song;
+  const placed = song.bars.map((bar, i) => ({ bar, ts: barTimeSignature(song, i), tempo: tempoAt(song, i) }));
+  const [moving] = placed.splice(from, 1);
+  placed.splice(to, 0, moving!);
+  return withMarkers(song, placed);
+}
+
 /** Copy a bar right after itself (new ids; meter/tempo changes are not repeated). */
 export function duplicateBar(song: Song, index: number): Song {
   const bar = song.bars[index];

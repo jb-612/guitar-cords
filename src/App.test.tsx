@@ -316,4 +316,46 @@ describe('App song flow', () => {
       expect(screen.getByRole('dialog', { name: /chord options/i })).toBeInTheDocument();
     });
   });
+
+  describe('reordering bars', () => {
+    async function gcd(user: User) {
+      for (const c of ['G', 'C', 'D']) await addFromLibrary(user, c);
+    }
+
+    it('moves a bar with the arrow keys on its handle, keeping focus on it', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcd(user);
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Move bar 1' }), { key: 'ArrowRight' });
+      expect(lanes()).toEqual([['C'], ['G'], ['D']]);
+      expect(screen.getByRole('button', { name: 'Move bar 2' })).toHaveFocus();
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Move bar 2' }), { key: 'ArrowLeft' });
+      expect(lanes()).toEqual([['G'], ['C'], ['D']]);
+    });
+
+    it('moves a bar earlier or later from the bar menu', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcd(user);
+      await user.click(within(bar(3)).getByRole('button', { name: 'Bar 3 options' }));
+      await user.click(screen.getByRole('button', { name: 'Move bar earlier' }));
+      expect(lanes()).toEqual([['G'], ['D'], ['C']]);
+      await user.click(within(bar(1)).getByRole('button', { name: 'Bar 1 options' }));
+      await user.click(screen.getByRole('button', { name: 'Move bar later' }));
+      expect(lanes()).toEqual([['D'], ['G'], ['C']]);
+    });
+
+    it('drags a bar by its handle and drops it after another bar', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcd(user);
+      document.elementFromPoint = () => bar(3); // jsdom has no layout: the pointer lands on bar 3's right half
+      const handle = screen.getByRole('button', { name: 'Move bar 1' });
+      fireEvent.pointerDown(handle, { button: 0, pointerType: 'mouse', clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerType: 'mouse', clientX: 300, clientY: 12 });
+      expect(screen.getByTestId('bar-drop-line')).toBeInTheDocument();
+      fireEvent.pointerUp(window, { pointerType: 'mouse', clientX: 300, clientY: 12 });
+      expect(lanes()).toEqual([['C'], ['D'], ['G']]);
+    });
+  });
 });

@@ -15,11 +15,12 @@ interface Props {
   onTempo: (bpm: number | null) => void;
   onInsert: (where: 'before' | 'after') => void;
   onDuplicate: () => void;
+  onMove: (to: number) => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDuplicate, onDelete, onClose }: Props) {
+export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDuplicate, onMove, onDelete, onClose }: Props) {
   const n = index + 1;
   const current = barTimeSignature(song, index);
   const [bpm, setBpm] = useState(String(tempoAt(song, index)));
@@ -63,6 +64,12 @@ export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDup
         </button>
         <button type="button" className="btn ghost" onClick={onDuplicate}>
           Duplicate bar
+        </button>
+        <button type="button" className="btn ghost" onClick={() => onMove(index - 1)} disabled={index === 0}>
+          Move bar earlier
+        </button>
+        <button type="button" className="btn ghost" onClick={() => onMove(index + 1)} disabled={index === song.bars.length - 1}>
+          Move bar later
         </button>
         <button type="button" className="btn ghost danger" onClick={onDelete}>
           Delete bar

@@ -4,7 +4,7 @@
  * slots to fill, and each bar has a menu (button, right-click or long-press) for
  * meter/tempo changes and bar insert/delete.
  */
-import { useRef, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { ChordThumb } from '../components/ChordThumb';
 import { KeySelect } from '../components/KeySelect';
 import { ChordSymbol } from '../editor/ChordSymbol';
@@ -14,6 +14,7 @@ import { NowPlaying } from '../player/NowPlaying';
 import type { Player } from '../player/usePlayer';
 import { ViewSwitch } from '../player/ViewSwitch';
 import { COMMON_TIME_SIGNATURES, formatTimeSignature, lengthName, shortLength, unitsOf } from './rhythm';
+import { useBarDrag, type BarDragView } from './useBarDrag';
 import { useHitDrag, type DragView } from './useHitDrag';
 import { setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
 import './SongScreen.css';
@@ -27,6 +28,8 @@ export interface SongScreenActions {
   onBarMenu: (barIndex: number) => void;
   /** Drag and drop: onto a rest moves, onto a chord swaps; `copy` keeps the original. */
   onMoveHit: (fromId: string, toId: string, copy: boolean) => void;
+  /** Reorder: bar `from` goes to position `to`. */
+  onMoveBar: (from: number, to: number) => void;
 }
 
 type Drag = ReturnType<typeof useHitDrag>;
@@ -70,12 +73,21 @@ function ScoreHost({ attach, hidden }: { attach: (el: HTMLDivElement | null) => 
   );
 }
 
+const barIdAt = (song: Song, i: number) => song.bars[i]?.id ?? null;
+
 function ChordView({ song, update, player, ...actions }: Props) {
   const { position, settings, section } = player;
   const drag = useHitDrag(actions.onMoveHit);
+  // After a keyboard move, focus follows the moved bar's handle.
+  const [focusBar, setFocusBar] = useState<string | null>(null);
+  const moveBar = (from: number, to: number) => {
+    setFocusBar(barIdAt(song, from));
+    actions.onMoveBar(from, to);
+  };
+  const barDrag = useBarDrag(actions.onMoveBar);
   return (
     <>
-      {drag.view && <DragGhost view={drag.view} />}
+      <DragLayer chord={drag.view} bar={barDrag.view} />
       {position && <NowPlaying song={song} position={position} hideFingers={settings.hideFingers} />}
       <ol className={`bars${section.picking ? ' is-picking' : ''}`} aria-label="Bars">
         {song.bars.map((bar, i) => (
@@ -86,6 +98,7 @@ function ChordView({ song, update, player, ...actions }: Props) {
             update={update}
             actions={actions}
             drag={drag}
+            reorder={{ count: song.bars.length, move: moveBar, begin: barDrag.begin, view: barDrag.view, focus: focusBar === bar.id }}
             previous={lastHit(song.bars[i - 1])}
             marks={barMarks(i, position?.bar, settings.range, section.anchor)}
             onPick={section.picking ? () => section.pickBar(i) : undefined}
@@ -205,6 +218,7 @@ interface BarProps {
   update: Update;
   actions: SongScreenActions;
   drag: Drag;
+  reorder: Reorder;
   /** Last hit of the previous bar, to know whether this bar's first chord is a change. */
   previous?: ChordHit;
   marks: BarMarks;
@@ -212,13 +226,76 @@ interface BarProps {
   onPick?: () => void;
 }
 
-function BarCard({ bar, index, update, actions, drag, previous, marks, onPick }: BarProps) {
+interface Reorder {
+  count: number;
+  move: (from: number, to: number) => void;
+  begin: (e: PointerEvent, from: number) => void;
+  view: BarDragView | null;
+  /** Put keyboard focus on this bar's handle (after it was moved with the keyboard). */
+  focus: boolean;
+}
+
+const MOVE_KEYS: Record<string, number> = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 };
+
+/** Grip to drag the bar elsewhere; arrow keys move it one place. */
+function Grip({ index, reorder }: { index: number; reorder: Reorder }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (reorder.focus) ref.current?.focus();
+  }, [reorder.focus, index]);
+  const onKeyDown = (e: KeyboardEvent) => {
+    const to = index + (MOVE_KEYS[e.key] ?? 0);
+    if (to === index || to < 0 || to >= reorder.count) return;
+    e.preventDefault();
+    reorder.move(index, to);
+  };
+  return (
+    <button ref={ref} type="button" className="bar-grip" aria-label={`Move bar ${index + 1}`} onPointerDown={(e) => reorder.begin(e, index)} onKeyDown={onKeyDown}>
+      ⠿
+    </button>
+  );
+}
+
+/** Where a dragged bar will land, drawn on the bar under the pointer. */
+function DropLine({ index, view }: { index: number; view: BarDragView | null }) {
+  if (!view || view.target !== index) return null;
+  return <span className={`bar-drop-line ${view.side}`} data-testid="bar-drop-line" aria-hidden="true" />;
+}
+
+/** Whatever is being dragged, following the pointer. */
+function DragLayer({ chord, bar }: { chord: DragView | null; bar: BarDragView | null }) {
+  if (chord) return <DragGhost view={chord} />;
+  return bar ? <BarGhost view={bar} /> : null;
+}
+
+function BarGhost({ view }: { view: BarDragView }) {
+  return (
+    <div className="drag-chip bar-chip" style={{ left: view.x, top: view.y }} aria-hidden="true">
+      Bar {view.from + 1}
+    </div>
+  );
+}
+
+const barClass = (marks: BarMarks, moving: boolean) => `${markClasses(marks)}${moving ? ' is-moving' : ''}`;
+
+/** Chips for a time-signature or tempo change starting at this bar. */
+function ChangeMarkers({ bar }: { bar: Bar }) {
+  return (
+    <>
+      {bar.timeSignature && <span className="bar-marker">{formatTimeSignature(bar.timeSignature)}</span>}
+      {bar.tempo && <span className="bar-marker">♩ = {bar.tempo}</span>}
+    </>
+  );
+}
+
+function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, onPick }: BarProps) {
   const n = index + 1;
   const openMenu = () => actions.onBarMenu(index);
   const longPress = useLongPress(openMenu);
   return (
     <li
-      className={markClasses(marks)}
+      className={barClass(marks, reorder.view?.from === index)}
+      data-bar-index={index}
       aria-label={`Bar ${n}`}
       aria-current={marks.current ? 'true' : undefined}
       style={{ animationDelay: `${Math.min(index, 8) * 25}ms` }}
@@ -229,10 +306,11 @@ function BarCard({ bar, index, update, actions, drag, previous, marks, onPick }:
       {...longPress}
     >
       {onPick && <button type="button" className="bar-pick" aria-label={`Select bar ${n}`} onClick={onPick} />}
+      <DropLine index={index} view={reorder.view} />
       <header className="bar-head">
+        <Grip index={index} reorder={reorder} />
         <span className="bar-number" aria-hidden="true">{n}</span>
-        {bar.timeSignature && <span className="bar-marker">{formatTimeSignature(bar.timeSignature)}</span>}
-        {bar.tempo && <span className="bar-marker">♩ = {bar.tempo}</span>}
+        <ChangeMarkers bar={bar} />
         <button type="button" className="bar-menu-btn" aria-label={`Bar ${n} options`} onClick={openMenu}>
           ⋯
         </button>
