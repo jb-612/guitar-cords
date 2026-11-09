@@ -67,8 +67,17 @@ export function defaultBackend(): SyncBackend {
   return lazyFirestore();
 }
 
+type FirestoreModule = { createFirestoreBackend: (config: typeof firebaseConfig) => SyncBackend };
+let shared: Promise<SyncBackend> | null = null;
+
+/** Firebase may be initialised only once per page, so every caller shares one backend. */
+export function sharedFirestore(load: () => Promise<FirestoreModule> = () => import('./firestoreBackend')): Promise<SyncBackend> {
+  shared ??= load().then((m) => m.createFirestoreBackend(firebaseConfig));
+  return shared;
+}
+
 function lazyFirestore(): SyncBackend {
-  const real = import('./firestoreBackend').then((m) => m.createFirestoreBackend(firebaseConfig));
+  const real = sharedFirestore();
   const call =
     <K extends keyof SyncBackend>(k: K) =>
     (...args: unknown[]) =>

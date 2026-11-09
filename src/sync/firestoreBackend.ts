@@ -5,7 +5,7 @@
  * Songs are stored as JSON text so nested arrays and undefined fields never trip Firestore.
  * Firestore's offline cache keeps working without a connection and syncs later.
  */
-import { initializeApp } from 'firebase/app';
+import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   getAuth,
@@ -15,17 +15,26 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, initializeFirestore, onSnapshot, persistentLocalCache, setDoc, type DocumentData } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, persistentLocalCache, setDoc, type DocumentData } from 'firebase/firestore';
 import type { ChordChoice, Song } from '../song/song';
 import type { SyncBackend } from './backend';
 import type { RemoteSong } from './merge';
 
 const toRemote = (d: DocumentData): RemoteSong => ({ song: JSON.parse(d.data as string) as Song, deleted: d.deleted === true });
 
+/** Firestore with the offline cache; if this page already set it up (hot reload), reuse that instance. */
+function firestoreFor(app: FirebaseApp) {
+  try {
+    return initializeFirestore(app, { localCache: persistentLocalCache() });
+  } catch {
+    return getFirestore(app);
+  }
+}
+
 export function createFirestoreBackend(config: Record<string, string | undefined>): SyncBackend {
-  const app = initializeApp(config);
+  const app = getApps()[0] ?? initializeApp(config);
   const auth = getAuth(app);
-  const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+  const db = firestoreFor(app);
   const songs = (uid: string) => collection(db, 'users', uid, 'songs');
   const chordsDoc = (uid: string) => doc(db, 'users', uid, 'meta', 'chords');
 

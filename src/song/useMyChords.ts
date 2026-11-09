@@ -3,7 +3,7 @@
  * A chord is the same entry when both its name and its frets match.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { toFretString } from '../music/chordShape';
+import { oneDotPerString, toFretString } from '../music/chordShape';
 import type { ChordChoice } from './song';
 
 const STORAGE_KEY = 'guitar-cords:my-chords';
@@ -14,7 +14,7 @@ const isChoice = (v: unknown): v is ChordChoice =>
 function load(): ChordChoice[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter(isChoice) : [];
+    return Array.isArray(parsed) ? parsed.filter(isChoice).map((c) => ({ ...c, shape: oneDotPerString(c.shape) })) : [];
   } catch {
     return [];
   }

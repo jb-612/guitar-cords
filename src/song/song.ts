@@ -5,7 +5,7 @@
  * which the creator can fill. Bars may carry a time-signature or tempo change that
  * applies from that bar on. All functions are pure and return a new Song.
  */
-import { toFretString, type ChordShape } from '../music/chordShape';
+import { oneDotPerString, toFretString, type ChordShape } from '../music/chordShape';
 import { suggestKeys, type KeySuggestion } from '../music/keyDetection';
 import { barUnits, defaultDirection, sameTimeSignature, type TimeSignature } from './rhythm';
 
@@ -501,9 +501,11 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 /** Upgrade a stored song to the current model; null if it isn't a song. */
 export function migrateSong(raw: unknown): Song | null {
   if (!isObject(raw) || !Array.isArray(raw.bars) || typeof raw.title !== 'string') return null;
-  if (isObject(raw.timeSignature)) return raw as unknown as Song;
-  return fromV1(raw as unknown as V1Song);
+  const song = isObject(raw.timeSignature) ? (raw as unknown as Song) : fromV1(raw as unknown as V1Song);
+  return mapEvents(song, repairEvent);
 }
+
+const repairEvent = (e: SongEvent): SongEvent => (e.kind === 'chord' ? { ...e, shape: oneDotPerString(e.shape) } : e);
 
 function fromV1(old: V1Song): Song {
   const timeSignature: TimeSignature = { beats: old.beatsPerBar || 4, unit: 4 };

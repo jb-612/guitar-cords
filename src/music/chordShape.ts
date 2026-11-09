@@ -94,13 +94,16 @@ function layBarre(dots: FretDot[], muted: number[], b: Barre): ChordShape {
 
 /** Strings inside a barre with no finger of their own are held by the barre (e.g. after lifting a finger above it). */
 function fillBarres(shape: ChordShape): ChordShape {
-  const barres = shape.dots.map((d) => barreOf(shape, d)).filter((b): b is Barre => b !== null);
-  const gaps = barres.flatMap((b) =>
-    span(b.lo, b.hi)
-      .filter((s) => !dotOn(shape, s) && !shape.muted.includes(s))
-      .map((s) => ({ string: s, fret: b.fret, finger: b.finger })),
-  );
-  return gaps.length ? { ...shape, dots: byString([...shape.dots, ...gaps]) } : shape;
+  const open = (s: number) => !dotOn(shape, s) && !shape.muted.includes(s);
+  const gaps = new Map<number, FretDot>();
+  for (const b of barresIn(shape)) span(b.lo, b.hi).filter(open).forEach((s) => gaps.set(s, { string: s, fret: b.fret, finger: b.finger }));
+  return gaps.size ? { ...shape, dots: byString([...shape.dots, ...gaps.values()]) } : shape;
+}
+
+/** Each barre once (every dot of a barre reports the same barre). */
+function barresIn(shape: ChordShape): Barre[] {
+  const all = shape.dots.map((d) => barreOf(shape, d)).filter((b): b is Barre => b !== null);
+  return all.filter((b, i) => all.findIndex((o) => o.finger === b.finger && o.fret === b.fret) === i);
 }
 
 /** A loose finger keeps its number when moved by a tap; on a barred string the tap places a new finger above the barre. */
@@ -268,3 +271,6 @@ export function assignFingers(fretted: { string: number; fret: number }[]): Fret
     ...rest.map((d, i) => ({ ...d, finger: Math.min(firstFinger + i, 4) as Finger })),
   ];
 }
+
+/** One dot per string: older versions could store a barre string several times. */
+export const oneDotPerString = (shape: ChordShape): ChordShape => ({ ...shape, dots: shape.dots.filter((d, i) => shape.dots.findIndex((o) => o.string === d.string) === i) });

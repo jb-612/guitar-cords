@@ -1,4 +1,5 @@
-import { rememberChord } from './useMyChords';
+import { renderHook } from '@testing-library/react';
+import { rememberChord, useMyChords } from './useMyChords';
 import { shapeFromFrets } from '../music/chordShape';
 
 describe('rememberChord', () => {
@@ -12,5 +13,14 @@ describe('rememberChord', () => {
     const a = { symbol: 'G', shape: shapeFromFrets('320003') };
     const b = { symbol: 'G', shape: shapeFromFrets('320033') };
     expect(rememberChord(rememberChord([], a), b)).toHaveLength(2);
+  });
+});
+
+describe('loading stored chords', () => {
+  it('repairs fingerings saved with the same string twice', () => {
+    const dot = (string: number, fret: number) => ({ string, fret, finger: 1 });
+    localStorage.setItem('guitar-cords:my-chords', JSON.stringify([{ symbol: 'X', shape: { dots: [dot(4, 2), dot(4, 2), dot(5, 2)], muted: [] } }]));
+    const { result } = renderHook(() => useMyChords());
+    expect(result.current.myChords[0]!.shape.dots.map((d) => d.string)).toEqual([4, 5]);
   });
 });

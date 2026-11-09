@@ -259,3 +259,13 @@ describe('viewStartFret', () => {
     expect(viewStartFret(tapAll([[0, 7], [1, 9]]))).toBe(7);
   });
 });
+
+describe('lifting a finger off a barred string (regression: duplicate dots)', () => {
+  it('lets the barre hold the string again with exactly one dot', () => {
+    const fSharpM = shapeFromFrets('244222'); // barre on 2, fingers on strings 5 and 4
+    const lifted = tapString(fSharpM, 2, 4); // lift the finger on the D string
+    const strings = lifted.dots.map((d) => d.string);
+    expect(strings).toEqual([...new Set(strings)]);
+    expect(lifted.dots.find((d) => d.string === 2)).toMatchObject({ fret: 2 });
+  });
+});

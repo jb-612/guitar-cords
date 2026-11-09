@@ -24,6 +24,7 @@ import {
   suggestedKey,
   tempoAt,
   type Song,
+  type ChordHit,
   type SongEvent,
 } from './song';
 import { barUnits } from './rhythm';
@@ -399,5 +400,15 @@ describe('migrateSong (songs saved before rhythm editing)', () => {
 
   it('returns null for things that are not songs', () => {
     expect(migrateSong({ nope: true })).toBeNull();
+  });
+});
+
+describe('repairing stored shapes', () => {
+  it('drops repeated dots on a string when a song is loaded (left by an old barre bug)', () => {
+    const dot = (string: number, fret: number, finger: number) => ({ string, fret, finger });
+    const shape = { dots: [dot(0, 2, 1), dot(1, 4, 3), dot(2, 2, 1), dot(2, 2, 1), dot(2, 2, 1), dot(3, 3, 2), dot(4, 2, 1), dot(5, 2, 1)], muted: [] };
+    const stored = { ...createSong(), bars: [{ id: 'b', lyrics: '', events: [{ id: 'h', kind: 'chord', symbol: 'F#7', shape, units: 32, direction: 'down', style: 'strum', sustain: 'ring' }] }] };
+    const loaded = migrateSong(JSON.parse(JSON.stringify(stored)))!;
+    expect((loaded.bars[0]!.events[0] as ChordHit).shape.dots.map((d) => d.string)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 });
