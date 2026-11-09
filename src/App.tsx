@@ -51,12 +51,11 @@ type Overlay =
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
+const UNDO_KEYS: Record<string, 'undo' | 'redo'> = { z: 'undo', 'shift+z': 'redo', y: 'redo' };
+
 function undoCommand(e: KeyboardEvent): 'undo' | 'redo' | null {
   if (!(e.metaKey || e.ctrlKey)) return null;
-  const key = e.key.toLowerCase();
-  if (key === 'y') return 'redo';
-  if (key !== 'z') return null;
-  return e.shiftKey ? 'redo' : 'undo';
+  return UNDO_KEYS[`${e.shiftKey ? 'shift+' : ''}${e.key.toLowerCase()}`] ?? null;
 }
 
 /** Ctrl/Cmd+Z undo, Shift+Ctrl/Cmd+Z or Ctrl+Y redo — anywhere in the app. */
