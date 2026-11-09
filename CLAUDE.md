@@ -7,7 +7,7 @@ Mobile-first guitar chord and song editor for the web and desktop. React + TypeS
 ## Commands
 
 ```bash
-npm run dev            # Vite dev server (web)
+npm run dev            # Vite dev server (web) on fixed port 5317 (vite.config.ts)
 npm run electron:dev   # Vite + Electron window against the dev server
 npm run electron:start # production build, then open in Electron
 npm run build          # tsc -b && vite build -> dist/
