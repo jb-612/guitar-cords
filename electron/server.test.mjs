@@ -7,11 +7,12 @@ import server from './server.cjs';
 const { distFile, startServer } = server;
 
 describe('distFile', () => {
-  const dist = '/app/dist';
+  // Built with path so the expectations hold on Windows (backslashes, drive letters) too.
+  const dist = path.resolve('/app/dist');
   it('maps paths into dist, with index.html for the root', () => {
-    expect(distFile(dist, '/')).toBe('/app/dist/index.html');
-    expect(distFile(dist, '/assets/app.js')).toBe('/app/dist/assets/app.js');
-    expect(distFile(dist, '/soundfont/sonivox%20sf2.sf2')).toBe('/app/dist/soundfont/sonivox sf2.sf2');
+    expect(distFile(dist, '/')).toBe(path.join(dist, 'index.html'));
+    expect(distFile(dist, '/assets/app.js')).toBe(path.join(dist, 'assets', 'app.js'));
+    expect(distFile(dist, '/soundfont/sonivox%20sf2.sf2')).toBe(path.join(dist, 'soundfont', 'sonivox sf2.sf2'));
   });
   it('never leaves dist', () => {
     expect(distFile(dist, '/../secret.txt')).toBeNull();

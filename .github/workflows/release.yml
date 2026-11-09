@@ -40,7 +40,11 @@ jobs:
         run: npm run selftest:packaged
       - name: Smoke-test the packaged app (virtual display)
         if: runner.os == 'Linux'
-        run: xvfb-run --auto-servernum npm run selftest:packaged
+        # Chromium's setuid sandbox helper must be root-owned, as the .deb install makes it.
+        run: |
+          sudo chown root:root release/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 release/linux-unpacked/chrome-sandbox
+          xvfb-run --auto-servernum npm run selftest:packaged
       - uses: actions/upload-artifact@v4
         with:
           name: guitar-cords-${{ runner.os }}
