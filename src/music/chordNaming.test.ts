@@ -52,6 +52,23 @@ describe('common flag', () => {
 });
 
 describe('nameNotes', () => {
+  it('falls back to a chord over a foreign bass note when nothing else fits', () => {
+    expect(nameNotes(['F#', 'C', 'E', 'G'])[0]?.symbol).toBe('C/F#');
+    expect(nameNotes(['F', 'E', 'G', 'B'])[0]?.symbol).toBe('Em/F');
+  });
+
+  it('describes voicings without a 3rd by their intervals (the creator\'s 3x4030 -> Gmaj7(add13, no3))', () => {
+    expect(nameChord(shapeFromFrets('3x4030'))[0]?.symbol).toBe('Gmaj7(add13, no3)');
+  });
+
+  it('keeps recognised no-3rd chords under their usual name (G C D F A -> G11)', () => {
+    expect(nameNotes(['G', 'C', 'D', 'F', 'A'])[0]?.symbol).toBe('G11');
+  });
+
+  it('returns nothing for note sets with no chord at all', () => {
+    expect(nameNotes(['F', 'B'])).toEqual([]);
+  });
+
   it('names a power chord', () => {
     expect(nameNotes(['E', 'B'])[0]?.symbol).toBe('E5');
   });

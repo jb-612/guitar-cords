@@ -66,6 +66,47 @@
   color: var(--ink-soft);
 }
 
+.cs-quality.is-long {
+  font-size: 22px;
+}
+
+.chord-symbol.is-custom {
+  max-width: 100%;
+  font-size: 40px;
+  overflow-wrap: anywhere;
+}
+
+.name-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-m);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.name-field input::placeholder {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+.name-field input:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 4px var(--brass-glow);
+}
+
+.name-field input:disabled {
+  opacity: 0.5;
+}
+
 .chord-symbol.is-unknown {
   font-size: 56px;
   color: var(--ink-faint);

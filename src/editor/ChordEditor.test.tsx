@@ -109,6 +109,50 @@ describe('ChordEditor', () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
+  describe('naming it yourself', () => {
+    // 1234xx = F B F B: no chord name exists for this.
+    const unnamed = () => shapeFromFrets('1234xx');
+
+    it('precondition: the shape really has no detectable name', () => {
+      render(<ChordEditor initialShape={unnamed()} />);
+      expect(chordName()).toHaveAccessibleName('Unknown chord');
+    });
+
+    it('lets the creator name and save an unrecognised fingering', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      render(<ChordEditor initialShape={unnamed()} onSave={onSave} />);
+      const save = screen.getByRole('button', { name: /save chord/i });
+      expect(save).toBeDisabled();
+      await user.type(screen.getByRole('textbox', { name: 'Chord name' }), 'Tritone stab');
+      expect(chordName()).toHaveAccessibleName('Tritone stab');
+      await user.click(save);
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'Tritone stab', frets: '1234xx' }));
+    });
+
+    it('pre-fills the detected name and lets the creator override it', async () => {
+      const user = userEvent.setup();
+      const onSave = vi.fn();
+      render(<ChordEditor initialShape={shapeFromFrets('x32010')} onSave={onSave} />);
+      const field = screen.getByRole('textbox', { name: 'Chord name' });
+      expect(field).toHaveValue('C');
+      await user.clear(field);
+      await user.type(field, 'C (my way)');
+      await user.click(screen.getByRole('button', { name: /save chord/i }));
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ name: 'C (my way)' }));
+    });
+
+    it('picking an alternative replaces a typed name', async () => {
+      const user = userEvent.setup();
+      render(<ChordEditor initialShape={shapeFromFrets('x32253')} />);
+      const field = screen.getByRole('textbox', { name: 'Chord name' });
+      await user.clear(field);
+      await user.type(field, 'Mine');
+      await user.click(screen.getByRole('button', { name: 'Am7/C' }));
+      expect(field).toHaveValue('Am7/C');
+    });
+  });
+
   it('saves the shape with its chosen name', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();

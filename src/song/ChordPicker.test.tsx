@@ -38,6 +38,25 @@ describe('ChordPicker', () => {
     expect(screen.getByText(/no chord called/i)).toBeInTheDocument();
   });
 
+  describe('my chords', () => {
+    const mine = [{ symbol: 'Tritone stab', shape: { dots: [{ string: 0, fret: 1, finger: 1 as const }], muted: [4, 5] } }];
+
+    it('shows the creator\'s own chords first', () => {
+      render(<ChordPicker songKey={null} myChords={mine} onPick={vi.fn()} onCreate={vi.fn()} onClose={vi.fn()} />);
+      expect(within(screen.getByRole('group', { name: 'My chords' })).getByRole('button', { name: 'Tritone stab' })).toBeInTheDocument();
+    });
+
+    it('finds own chords by a custom name that is not a standard chord', async () => {
+      const user = userEvent.setup();
+      const onPick = vi.fn();
+      render(<ChordPicker songKey={null} myChords={mine} onPick={onPick} onCreate={vi.fn()} onClose={vi.fn()} />);
+      await user.type(screen.getByRole('searchbox', { name: /find a chord/i }), 'tritone');
+      expect(screen.queryByText(/no chord called/i)).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Tritone stab' }));
+      expect(onPick).toHaveBeenCalledWith(mine[0]);
+    });
+  });
+
   it('offers to create a new chord', async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn();

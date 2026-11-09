@@ -43,6 +43,22 @@ describe('App song flow', () => {
     expect(barChords()).toEqual([['C']]);
   });
 
+  it('saves an unrecognised fingering under the creator\'s name and keeps it in My chords', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /add chord/i }));
+    await user.click(screen.getByRole('button', { name: /create a new chord/i }));
+    const editor = screen.getByRole('dialog', { name: /new chord/i });
+    for (const [s, f] of [[6, 1], [5, 2], [4, 3], [3, 4]] as const) await user.click(within(editor).getByRole('button', { name: `String ${s}, fret ${f}` }));
+    await user.click(within(editor).getByRole('button', { name: 'Mute string 2' }));
+    await user.click(within(editor).getByRole('button', { name: 'Mute string 1' }));
+    await user.type(within(editor).getByRole('textbox', { name: 'Chord name' }), 'Tritone stab');
+    await user.click(within(editor).getByRole('button', { name: /save chord/i }));
+    expect(barChords()).toEqual([['Tritone stab']]);
+    await user.click(screen.getByRole('button', { name: /add chord/i }));
+    expect(within(screen.getByRole('group', { name: 'My chords' })).getByRole('button', { name: 'Tritone stab' })).toBeInTheDocument();
+  });
+
   it('suggests a key after a few chords and lets the creator accept it', async () => {
     const user = userEvent.setup();
     render(<App />);

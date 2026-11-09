@@ -9,6 +9,15 @@
   border-radius: var(--radius-m);
 }
 
+.diagram:focus {
+  outline: none;
+}
+
+.diagram:focus-visible {
+  outline: 1.5px dashed var(--ink-faint);
+  outline-offset: 6px;
+}
+
 .board-bg {
   fill: var(--paper-sunk);
   opacity: 0.55;

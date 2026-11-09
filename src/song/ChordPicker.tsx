@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { ChordThumb } from '../components/ChordThumb';
 import { SheetHeader } from '../components/Sheet';
+import { toFretString } from '../music/chordShape';
 import { parseChord } from '../music/chordSymbol';
 import { diatonicChords } from '../music/diatonic';
 import { VOICING_LIBRARY, suggestVoicings, type Voicing } from '../music/voicings';
@@ -14,12 +15,21 @@ import './ChordPicker.css';
 
 interface Props {
   songKey: string | null;
+  /** The creator's own fingerings, newest first. */
+  myChords?: ChordChoice[];
   onPick: (choice: ChordChoice) => void;
   onCreate: () => void;
   onClose: () => void;
 }
 
 const COMMON = Object.keys(VOICING_LIBRARY);
+
+type Item = { symbol: string; voicing: Voicing };
+
+const asItem = (c: ChordChoice): Item => ({ symbol: c.symbol, voicing: { frets: toFretString(c.shape), shape: c.shape, label: 'My chord' } });
+
+const matching = (mine: ChordChoice[], query: string) =>
+  mine.filter((c) => c.symbol.toLowerCase().includes(query.toLowerCase())).map(asItem);
 
 /** First fingering for each symbol that has one. */
 const withShapes = (symbols: string[]) =>
@@ -28,7 +38,7 @@ const withShapes = (symbols: string[]) =>
     return v ? [{ symbol, voicing: v }] : [];
   });
 
-export function ChordPicker({ songKey, onPick, onCreate, onClose }: Props) {
+export function ChordPicker({ songKey, myChords = [], onPick, onCreate, onClose }: Props) {
   const [query, setQuery] = useState('');
   const q = query.trim();
   return (
@@ -45,7 +55,7 @@ export function ChordPicker({ songKey, onPick, onCreate, onClose }: Props) {
           spellCheck={false}
         />
       </div>
-      {q ? <SearchResults query={q} onPick={onPick} onCreate={onCreate} /> : <Library songKey={songKey} onPick={onPick} />}
+      {q ? <SearchResults query={q} mine={matching(myChords, q)} onPick={onPick} onCreate={onCreate} /> : <Library songKey={songKey} mine={myChords.map(asItem)} onPick={onPick} />}
       <div className="picker-footer">
         <button type="button" className="btn ghost create-btn" onClick={onCreate}>
           <span aria-hidden="true">＋</span> Create a new chord
@@ -55,17 +65,36 @@ export function ChordPicker({ songKey, onPick, onCreate, onClose }: Props) {
   );
 }
 
-function Library({ songKey, onPick }: { songKey: string | null; onPick: (c: ChordChoice) => void }) {
+function Library({ songKey, mine, onPick }: { songKey: string | null; mine: Item[]; onPick: (c: ChordChoice) => void }) {
   return (
     <>
+      {mine.length > 0 && <ChordGroup label="My chords" items={mine} onPick={onPick} />}
       {songKey && <ChordGroup label={`In the key of ${songKey}`} items={withShapes(diatonicChords(songKey))} onPick={onPick} featured />}
       <ChordGroup label="Common chords" items={withShapes(COMMON)} onPick={onPick} />
     </>
   );
 }
 
-function SearchResults({ query, onPick, onCreate }: { query: string; onPick: (c: ChordChoice) => void; onCreate: () => void }) {
+interface SearchProps {
+  query: string;
+  mine: Item[];
+  onPick: (c: ChordChoice) => void;
+  onCreate: () => void;
+}
+
+function SearchResults({ query, mine, onPick, onCreate }: SearchProps) {
+  return (
+    <>
+      {mine.length > 0 && <ChordGroup label="My chords" items={mine} onPick={onPick} />}
+      <StandardResults query={query} quiet={mine.length > 0} onPick={onPick} onCreate={onCreate} />
+    </>
+  );
+}
+
+/** Fingerings for a standard chord name. `quiet` hides the "not found" message when own chords matched. */
+function StandardResults({ query, quiet, onPick, onCreate }: Omit<SearchProps, 'mine'> & { quiet: boolean }) {
   const parsed = parseChord(query);
+  if (!parsed && quiet) return null;
   if (!parsed) return <p className="picker-empty">No chord called “{query}”. Check the spelling, or create it on the fretboard.</p>;
   const voicings = suggestVoicings(query);
   if (voicings.length === 0) {
@@ -83,7 +112,7 @@ function SearchResults({ query, onPick, onCreate }: { query: string; onPick: (c:
 
 interface GroupProps {
   label: string;
-  items: { symbol: string; voicing: Voicing }[];
+  items: Item[];
   onPick: (c: ChordChoice) => void;
   featured?: boolean;
   showLabel?: boolean;

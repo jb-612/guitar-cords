@@ -5,7 +5,7 @@ import { spell, spellingForKey } from '../music/chordSymbol';
 import { KeySelect } from '../components/KeySelect';
 import { ChordDiagram } from './ChordDiagram';
 import { ChordSymbol } from './ChordSymbol';
-import { MAX_START_FRET, editorReducer, initialEditorState, type EditorAction } from './editorReducer';
+import { MAX_START_FRET, editorReducer, initialEditorState, type EditorAction, type EditorState } from './editorReducer';
 import './ChordEditor.css';
 
 export interface SavedChord {
@@ -20,6 +20,8 @@ interface Props {
   initialKey?: string;
   /** Shape to edit; starts empty when omitted. */
   initialShape?: ChordShape;
+  /** Name to start with when editing a saved chord (may be a custom name). */
+  initialName?: string | null;
 }
 
 const initState = (shape?: ChordShape) =>
@@ -29,59 +31,103 @@ const MAX_ALTERNATIVES = 4;
 
 const isBlank = (shape: ChordShape) => shape.dots.length === 0 && shape.muted.length === 0;
 
-/** Ranked names for the shape; `current` is the creator's pick if still valid, else the best. */
-function useChordNames(shape: ChordShape, songKey: string) {
+/**
+ * Ranked names for the shape. `current` is the creator's pick if still valid, else the best.
+ * `typed` is a name the creator wrote themselves; it wins over detection until they pick an alternative.
+ */
+function useChordNames(shape: ChordShape, songKey: string, initialName: string | null) {
   const [chosen, setChosen] = useState<string | null>(null);
-  const candidates = useMemo(() => (isBlank(shape) ? [] : nameChord(shape, songKey || undefined)), [shape, songKey]);
+  const [typed, setTyped] = useState<string | null>(initialName);
+  const candidates = useMemo(() => detectNames(shape, songKey), [shape, songKey]);
   const current = candidates.find((c) => c.symbol === chosen) ?? candidates[0];
-  return { candidates, current, setChosen };
+  const pick = (symbol: string) => {
+    setChosen(symbol);
+    setTyped(null);
+  };
+  return { candidates, current, typed, setTyped, pick, ...nameView(typed, current) };
 }
 
-export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape }: Props) {
+const detectNames = (shape: ChordShape, songKey: string) => (isBlank(shape) ? [] : nameChord(shape, songKey || undefined));
+
+/** What the UI shows: a typed name wins over the detected one. */
+function nameView(typed: string | null, current: ChordName | undefined) {
+  if (typed !== null) return { displayName: typed.trim(), fieldValue: typed, shownCurrent: undefined };
+  const detectedName = current?.symbol ?? '';
+  return { displayName: detectedName, fieldValue: detectedName, shownCurrent: current };
+}
+
+const selectedFinger = (state: EditorState) => state.shape.dots.find((d) => d.string === state.selected)?.finger ?? null;
+
+export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, initialName = null }: Props) {
   const [state, dispatch] = useReducer(editorReducer, initialShape, initState);
   const [songKey, setSongKey] = useState(initialKey);
-  const { candidates, current, setChosen } = useChordNames(state.shape, songKey);
-  const selectedDot = state.shape.dots.find((d) => d.string === state.selected);
-  const save = () => {
-    if (current) onSave?.({ name: current.symbol, frets: toFretString(state.shape), shape: state.shape });
-  };
+  const names = useChordNames(state.shape, songKey, initialName);
+  const { candidates, current, displayName, shownCurrent } = names;
+  const blank = isBlank(state.shape);
+  const save = () => onSave?.({ name: displayName, frets: toFretString(state.shape), shape: state.shape });
 
   return (
     <section className="editor" aria-label="Chord editor">
       <div className="editor-stage card">
-        <NamePanel shape={state.shape} current={current} songKey={songKey} />
+        <NamePanel shape={state.shape} name={displayName} inKey={!!shownCurrent?.inKey} songKey={songKey} />
         <ChordDiagram state={state} dispatch={dispatch} />
         <PositionStepper startFret={state.startFret} dispatch={dispatch} />
       </div>
       <div className="editor-side">
-        <FingerPicker finger={selectedDot?.finger ?? null} dispatch={dispatch} />
-        <Alternatives candidates={candidates} current={current} onPick={setChosen} />
+        <NameField value={names.fieldValue} detected={!!current} disabled={blank} onChange={names.setTyped} />
+        <FingerPicker finger={selectedFinger(state)} dispatch={dispatch} />
+        <Alternatives candidates={candidates} current={shownCurrent} onPick={names.pick} />
         <KeySelect value={songKey} onChange={setSongKey} />
-        <div className="editor-actions">
-          {onCancel && (
-            <button type="button" className="btn ghost" onClick={onCancel}>
-              Cancel
-            </button>
-          )}
-          <button type="button" className="btn ghost" onClick={() => dispatch({ type: 'clear' })} disabled={isBlank(state.shape)}>
-            Clear
-          </button>
-          <button
-            type="button"
-            className="btn primary"
-            disabled={!current}
-            onClick={save}
-          >
-            Save chord
-          </button>
-        </div>
+        <EditorActions canClear={!blank} canSave={!blank && displayName !== ''} onCancel={onCancel} onClear={() => dispatch({ type: 'clear' })} onSave={save} />
         <p className="editor-help">Tap a cell to place a finger · drag to move it · tap a selected finger to remove it · tap above the nut for open ○ / muted ×</p>
       </div>
     </section>
   );
 }
 
-function NamePanel({ shape, current, songKey }: { shape: ChordShape; current?: ChordName; songKey: string }) {
+interface ActionsProps {
+  canClear: boolean;
+  canSave: boolean;
+  onCancel?: () => void;
+  onClear: () => void;
+  onSave: () => void;
+}
+
+function EditorActions({ canClear, canSave, onCancel, onClear, onSave }: ActionsProps) {
+  return (
+    <div className="editor-actions">
+      {onCancel && (
+        <button type="button" className="btn ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      )}
+      <button type="button" className="btn ghost" onClick={onClear} disabled={!canClear}>
+        Clear
+      </button>
+      <button type="button" className="btn primary" disabled={!canSave} onClick={onSave}>
+        Save chord
+      </button>
+    </div>
+  );
+}
+
+function NameField({ value, detected, disabled, onChange }: { value: string; detected: boolean; disabled: boolean; onChange: (v: string) => void }) {
+  return (
+    <label className="name-field">
+      <span className="section-label">Chord name</span>
+      <input
+        value={value}
+        disabled={disabled}
+        placeholder={detected ? '' : 'No standard name — type your own'}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete="off"
+        spellCheck={false}
+      />
+    </label>
+  );
+}
+
+function NamePanel({ shape, name, inKey, songKey }: { shape: ChordShape; name: string; inKey: boolean; songKey: string }) {
   if (isBlank(shape)) {
     return (
       <header className="name-panel is-empty">
@@ -91,10 +137,10 @@ function NamePanel({ shape, current, songKey }: { shape: ChordShape; current?: C
   }
   return (
     <header className="name-panel">
-      <ChordSymbol symbol={current?.symbol} />
+      <ChordSymbol symbol={name} />
       <p className="name-notes" aria-label="Notes played">
         {playedNotes(shape, songKey).join(' · ')}
-        <InKeyBadge songKey={songKey} inKey={!!current?.inKey} />
+        <InKeyBadge songKey={songKey} inKey={inKey} />
       </p>
     </header>
   );

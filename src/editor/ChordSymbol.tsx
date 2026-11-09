@@ -20,6 +20,15 @@ export function ChordSymbol({ symbol = '', inline = false }: Props) {
   return symbol ? <EngravedSymbol symbol={symbol} /> : <UnknownSymbol />;
 }
 
+/** A name the creator made up ("Tritone stab"): set as a title, not as root + quality. */
+function CustomName({ name }: { name: string }) {
+  return (
+    <h2 key={name} className="chord-symbol is-custom" data-testid="chord-name" aria-label={name}>
+      {name}
+    </h2>
+  );
+}
+
 function UnknownSymbol() {
   return (
     <h2 className="chord-symbol is-unknown" data-testid="chord-name" aria-label="Unknown chord">
@@ -28,12 +37,15 @@ function UnknownSymbol() {
   );
 }
 
+const LONG_QUALITY = 8;
+
 function EngravedSymbol({ symbol }: { symbol: string }) {
   const { root, quality, bass } = split(symbol);
+  if (!root) return <CustomName name={symbol} />;
   return (
     <h2 key={symbol} className="chord-symbol" data-testid="chord-name" aria-label={symbol}>
       <span className="cs-root" aria-hidden="true">{accidentals(root)}</span>
-      {quality && <span className="cs-quality" aria-hidden="true">{accidentals(quality)}</span>}
+      {quality && <span className={`cs-quality${quality.length > LONG_QUALITY ? ' is-long' : ''}`} aria-hidden="true">{accidentals(quality)}</span>}
       {bass && <span className="cs-bass" aria-hidden="true">/{accidentals(bass)}</span>}
     </h2>
   );

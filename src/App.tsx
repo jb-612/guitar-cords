@@ -5,6 +5,7 @@ import { ChordActions } from './song/ChordActions';
 import { ChordPicker } from './song/ChordPicker';
 import { SongScreen } from './song/SongScreen';
 import { addChord, findChord, removeChord, replaceChord, setChordBeats, type ChordChoice, type Song, type SongChord } from './song/song';
+import { useMyChords } from './song/useMyChords';
 import { useStoredSong } from './song/useStoredSong';
 import './App.css';
 
@@ -18,6 +19,7 @@ type Overlay =
 export function App() {
   const [song, setSong] = useStoredSong();
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
+  const { myChords, remember } = useMyChords();
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply = (fn: (s: Song) => Song) => {
     setSong(fn);
@@ -36,7 +38,7 @@ export function App() {
         onAddChord={() => setOverlay({ kind: 'picker' })}
         onChordTap={(chordId) => setOverlay({ kind: 'actions', chordId })}
       />
-      <OverlayView overlay={overlay} song={song} setOverlay={setOverlay} close={close} apply={apply} />
+      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
     </div>
   );
 }
@@ -44,17 +46,20 @@ export function App() {
 interface OverlayProps {
   overlay: Overlay;
   song: Song;
+  myChords: ChordChoice[];
+  remember: (c: ChordChoice) => void;
   setOverlay: (o: Overlay) => void;
   close: () => void;
   apply: (fn: (s: Song) => Song) => void;
 }
 
-function OverlayView({ overlay, song, setOverlay, close, apply }: OverlayProps) {
+function OverlayView({ overlay, song, myChords, remember, setOverlay, close, apply }: OverlayProps) {
   if (overlay.kind === 'picker') {
     return (
       <Sheet label="Add a chord" onClose={close}>
         <ChordPicker
           songKey={song.key}
+          myChords={myChords}
           onPick={(choice: ChordChoice) => apply((s) => addChord(s, choice))}
           onCreate={() => setOverlay({ kind: 'editor', chordId: null })}
           onClose={close}
@@ -62,20 +67,40 @@ function OverlayView({ overlay, song, setOverlay, close, apply }: OverlayProps) 
       </Sheet>
     );
   }
-  if (overlay.kind === 'editor') return <EditorSheet song={song} chordId={overlay.chordId} close={close} apply={apply} />;
+  if (overlay.kind === 'editor') return <EditorSheet song={song} chordId={overlay.chordId} close={close} apply={apply} remember={remember} />;
   const chord = overlay.kind === 'actions' ? findChord(song, overlay.chordId) : undefined;
   return chord ? <ActionsSheet song={song} chord={chord} setOverlay={setOverlay} close={close} apply={apply} /> : null;
 }
 
-function EditorSheet({ song, chordId, close, apply }: { song: Song; chordId: string | null; close: () => void; apply: OverlayProps['apply'] }) {
+const editorTitle = (existing?: SongChord) => (existing ? `Edit ${existing.symbol}` : 'New chord');
+
+/** Editing keeps the chord's own name (it may be custom); a new chord starts empty in the song key. */
+const editorStart = (song: Song, existing?: SongChord) => ({
+  initialShape: existing?.shape,
+  initialName: existing?.symbol ?? null,
+  initialKey: song.key ?? '',
+});
+
+interface EditorSheetProps {
+  song: Song;
+  chordId: string | null;
+  close: () => void;
+  apply: OverlayProps['apply'];
+  remember: OverlayProps['remember'];
+}
+
+function EditorSheet({ song, chordId, close, apply, remember }: EditorSheetProps) {
   const existing = chordId ? findChord(song, chordId) : undefined;
-  const title = existing ? `Edit ${existing.symbol}` : 'New chord';
-  const save = ({ name, shape }: SavedChord) =>
-    apply((s) => (chordId ? replaceChord(s, chordId, { symbol: name, shape }) : addChord(s, { symbol: name, shape })));
+  const title = editorTitle(existing);
+  const save = ({ name, shape }: SavedChord) => {
+    const choice = { symbol: name, shape };
+    remember(choice);
+    apply((s) => (chordId ? replaceChord(s, chordId, choice) : addChord(s, choice)));
+  };
   return (
     <Sheet label={title} onClose={close} wide>
       <h2 className="sheet-title editor-sheet-title">{title}</h2>
-      <ChordEditor initialShape={existing?.shape} initialKey={song.key ?? ''} onSave={save} onCancel={close} />
+      <ChordEditor {...editorStart(song, existing)} onSave={save} onCancel={close} />
     </Sheet>
   );
 }
