@@ -1,0 +1,115 @@
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(16px + env(safe-area-inset-top)) 24px calc(20px + env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 50% 35%, #2a221c 0%, #0f0d0b 70%);
+  color: #efe7da;
+  animation: fade-in var(--t-med) var(--ease-out);
+}
+
+.stage-tap {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stage-top,
+.stage-next {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.stage-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.stage-bar {
+  margin-left: auto;
+  font-size: 14px;
+  color: #b9ad9d;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-exit {
+  pointer-events: auto;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #3a332c;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.04);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stage-main {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 20px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.stage-chord .chord-symbol.inline {
+  font-size: clamp(96px, 26vw, 220px);
+  line-height: 0.95;
+  color: #efe7da;
+  animation: name-in var(--t-med) var(--ease-out);
+}
+
+.stage-diagram .chord-thumb {
+  width: clamp(120px, 28vw, 220px);
+  animation: pop var(--t-med) var(--ease-spring);
+}
+
+.stage-diagram .ct-fret,
+.stage-diagram .ct-string {
+  stroke: #b9ad9d;
+}
+
+.stage-diagram .ct-nut,
+.stage-diagram .ct-dot {
+  stroke: #efe7da;
+  fill: #efe7da;
+}
+
+.stage-lyrics {
+  max-width: 900px;
+  margin: 0;
+  min-height: 1.3em;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(24px, 5vw, 44px);
+  color: #d4a556;
+}
+
+.stage-next {
+  justify-content: space-between;
+  font-size: 18px;
+  color: #b9ad9d;
+}
+
+.stage-next .chord-symbol.inline {
+  font-size: 34px;
+  color: #efe7da;
+}
+
+.stage-state {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

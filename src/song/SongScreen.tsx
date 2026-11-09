@@ -37,6 +37,7 @@ export interface SongScreenActions {
   /** Reorder: bar `from` goes to position `to`. */
   onMoveBar: (from: number, to: number) => void;
   onTranspose: () => void;
+  onPerform: () => void;
 }
 
 type Drag = ReturnType<typeof useHitDrag>;
@@ -67,7 +68,12 @@ export function SongScreen(props: Props) {
         <MeterRow song={song} update={update} />
         <CapoRow song={song} update={update} onTranspose={props.onTranspose} />
       </div>
-      <ViewSwitch value={view} onChange={player.setView} />
+      <div className="view-row">
+        <ViewSwitch value={view} onChange={player.setView} />
+        <button type="button" className="new-song-btn perform-btn" aria-label="Perform" onClick={props.onPerform} disabled={song.bars.length === 0}>
+          <span aria-hidden="true">◉</span> Perform
+        </button>
+      </div>
       {view === 'chords' && <ChordView {...props} numeralKey={numeralKey} />}
       <ScoreHost attach={player.attachHost} hidden={view === 'chords'} />
     </main>

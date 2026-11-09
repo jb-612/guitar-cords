@@ -305,4 +305,21 @@ describe('song player', () => {
       expect(engine().last('setSpeed')).toBe(0.8);
     });
   });
+
+  describe('performance mode', () => {
+    it('shows the current and next chord big, follows playback, and plays or pauses on tap', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Perform' }));
+      const stage = screen.getByRole('dialog', { name: 'Performance' });
+      expect(within(stage).getByTestId('stage-chord')).toHaveAccessibleName('G');
+      expect(within(stage).getByTestId('stage-next')).toHaveAccessibleName('C');
+      await user.click(within(stage).getByRole('button', { name: 'Play or pause' }));
+      expect(engine().count('playPause')).toBe(1);
+      engine().emit({ type: 'position', bar: 1, unit: 0 });
+      expect(within(stage).getByTestId('stage-chord')).toHaveAccessibleName('C');
+      expect(within(stage).getByText('second bar words')).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'Performance' })).toBeNull();
+    });
+  });
 });

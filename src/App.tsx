@@ -10,6 +10,7 @@ import { ShareSheet } from './share/ShareSheet';
 import { useSync, type SyncApi } from './sync/useSync';
 import { Sheet } from './components/Sheet';
 import { ChordEditor, type SavedChord } from './editor/ChordEditor';
+import { PerformanceView } from './player/PerformanceView';
 import { Transport } from './player/Transport';
 import { usePlayer } from './player/usePlayer';
 import { BarMenu } from './song/BarMenu';
@@ -143,6 +144,7 @@ export function App() {
   const selection = useBarSelection(song, setSong);
   useSelectionKeys(selection);
   const notice = useSharedLink(library);
+  const [performing, setPerforming] = useState(false);
   const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply: Apply = (fn, keepOpen = false) => {
@@ -192,6 +194,7 @@ export function App() {
         onMoveHit={(from, to, copy) => setSong((s) => moveHit(s, from, to, { copy }))}
         onMoveBar={(from, to) => setSong((s) => moveBar(s, from, to))}
         onTranspose={() => setOverlay({ kind: 'transpose' })}
+        onPerform={() => setPerforming(true)}
       />
       <Transport song={song} player={player} onSongChange={setSong} />
       {notice && (
@@ -201,6 +204,7 @@ export function App() {
       )}
       <PrintSheet song={song} />
       {settings.tourOpen && <Tour onClose={settings.closeTour} />}
+      {performing && <PerformanceView song={song} player={player} onExit={() => setPerforming(false)} />}
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} selection={selection} settings={settings} />
     </div>
     </LeftHandedContext.Provider>

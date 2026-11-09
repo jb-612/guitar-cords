@@ -568,3 +568,18 @@
 .key-row {
   flex-wrap: wrap;
 }
+
+.view-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.view-row .view-switch {
+  margin: 0;
+}
+
+.perform-btn {
+  min-height: 44px;
+}
