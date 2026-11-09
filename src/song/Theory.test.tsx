@@ -44,4 +44,18 @@ describe('theory helpers', () => {
     await user.click(screen.getByRole('button', { name: 'Numerals' }));
     expect(screen.getAllByTestId('numeral').map((n) => n.textContent)).toEqual(['I', 'IV', 'V', 'vi']);
   });
+
+  it('names chords in an alternate tuning, and keeps the standard-tuning library out of the way', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tuning' }), 'drop-d');
+    await user.click(screen.getByRole('button', { name: /^add chord$/i }));
+    const picker = screen.getByRole('dialog', { name: /add a chord/i });
+    expect(within(picker).getByText(/library shapes are for standard tuning/i)).toBeInTheDocument();
+    expect(within(picker).queryByRole('group', { name: 'Common chords' })).toBeNull();
+    await user.click(within(picker).getByRole('button', { name: /create a new chord/i }));
+    const editor = screen.getByRole('dialog', { name: /new chord/i });
+    for (const [s, f] of [[3, 2], [2, 3], [1, 2]] as const) await user.click(within(editor).getByRole('button', { name: `String ${s}, fret ${f}` }));
+    expect(within(editor).getByTestId('chord-name')).toHaveAccessibleName('D');
+  });
 });

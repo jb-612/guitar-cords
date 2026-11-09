@@ -10,6 +10,7 @@ import { shiftShape, type ChordShape } from '../music/chordShape';
 import { formatKey, mod12, parseKey, spellingForKey } from '../music/chordSymbol';
 import { transposeChord } from '../music/transpose';
 import { suggestVoicings } from '../music/voicings';
+import { isStandard } from '../music/tunings';
 import type { ChordHit, Song, SongEvent } from './song';
 
 export const MAX_CAPO = 11;
@@ -41,11 +42,13 @@ function slide(shape: ChordShape, n: number): ChordShape | null {
 const hasOpenStrings = (shape: ChordShape) => shape.dots.length + shape.muted.length < 6;
 
 /** New fingering for a hit moved `n` semitones: the suggested voicing for its new name, else the old shape slid along. */
-function revoice(hit: ChordHit, symbol: string, n: number): ChordShape {
-  const suggested = suggestVoicings(symbol)[0]?.shape;
-  if (suggested) return suggested;
-  return (!hasOpenStrings(hit.shape) && slide(hit.shape, n)) || hit.shape;
+function revoice(hit: ChordHit, symbol: string, n: number, standard: boolean): ChordShape {
+  const suggested = standard ? suggestVoicings(symbol)[0]?.shape : undefined;
+  return suggested ?? slid(hit.shape, n);
 }
+
+/** The shape moved along the neck, or unchanged if it has open strings (they can't move). */
+const slid = (shape: ChordShape, n: number) => (hasOpenStrings(shape) ? shape : (slide(shape, n) ?? shape));
 
 export function transposeSong(song: Song, n: number): Song {
   if (n === 0) return song;
@@ -54,7 +57,7 @@ export function transposeSong(song: Song, n: number): Song {
   const move = (e: SongEvent): SongEvent => {
     if (e.kind !== 'chord') return e;
     const symbol = transposeChord(e.symbol, n, spelling);
-    return { ...e, symbol, shape: revoice(e, symbol, n) };
+    return { ...e, symbol, shape: revoice(e, symbol, n, isStandard(song.tuning)) };
   };
   return { ...song, key, bars: song.bars.map((b) => ({ ...b, events: b.events.map(move) })) };
 }

@@ -15,6 +15,7 @@ import { STRING_COUNT, toFretString, type ChordShape } from '../music/chordShape
 import { splitUnits, type NotePart } from '../song/rhythm';
 import type { Bar, ChordHit, GuitarSound, Song } from '../song/song';
 import { drumTrackTex, type DrumStyle } from './drums';
+import { isStandard, tuningTex } from '../music/tunings';
 
 /** Quotes would end the alphaTex string; swap in typographic ones. */
 const quoted = (text: string) => `"${text.replace(/\\/g, '/').replace(/"/g, '”')}"`;
@@ -146,6 +147,7 @@ const header = (song: Song) => [
   '\\staff {score tabs}',
   `\\instrument ${INSTRUMENTS[song.sound ?? 'steel']}`,
   ...(song.capo ? [`\\capo ${song.capo}`] : []),
+  ...(isStandard(song.tuning) ? [] : [tuningTex(song.tuning!)]),
 ];
 
 const INSTRUMENTS: Record<GuitarSound, string> = { steel: 'acousticguitarsteel', nylon: 'acousticguitarnylon', electric: 'electricguitarclean' };

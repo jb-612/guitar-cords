@@ -125,9 +125,9 @@ function describeIntervals(iv: Set<number>): string {
 
 const parenthesized = (parts: string[]) => (parts.length ? `(${parts.join(', ')})` : '');
 
-/** Rank names for a fretboard shape, spelled for the song key when given. */
-export function nameChord(shape: ChordShape, key?: string): ChordName[] {
-  const midi = soundingMidi(shape).filter((m): m is number => m !== null);
+/** Rank names for a fretboard shape, spelled for the song key when given, in the given tuning. */
+export function nameChord(shape: ChordShape, key?: string, tuning?: readonly number[]): ChordName[] {
+  const midi = soundingMidi(shape, tuning).filter((m): m is number => m !== null);
   if (midi.length === 0) return [];
   const spelling = spellingForKey(key);
   const bassFirst = [...midi].sort((a, b) => a - b).map((m) => spell(m, spelling));

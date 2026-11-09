@@ -22,6 +22,8 @@ interface Props {
   initialShape?: ChordShape;
   /** Name to start with when editing a saved chord (may be a custom name). */
   initialName?: string | null;
+  /** Open-string pitches (default standard tuning). */
+  tuning?: readonly number[];
 }
 
 const initState = (shape?: ChordShape) =>
@@ -35,10 +37,10 @@ const isBlank = (shape: ChordShape) => shape.dots.length === 0 && shape.muted.le
  * Ranked names for the shape. `current` is the creator's pick if still valid, else the best.
  * `typed` is a name the creator wrote themselves; it wins over detection until they pick an alternative.
  */
-function useChordNames(shape: ChordShape, songKey: string, initialName: string | null) {
+function useChordNames(shape: ChordShape, songKey: string, initialName: string | null, tuning?: readonly number[]) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [typed, setTyped] = useState<string | null>(initialName);
-  const candidates = useMemo(() => detectNames(shape, songKey), [shape, songKey]);
+  const candidates = useMemo(() => detectNames(shape, songKey, tuning), [shape, songKey, tuning]);
   const current = candidates.find((c) => c.symbol === chosen) ?? candidates[0];
   const pick = (symbol: string) => {
     setChosen(symbol);
@@ -47,7 +49,7 @@ function useChordNames(shape: ChordShape, songKey: string, initialName: string |
   return { candidates, current, typed, setTyped, pick, ...nameView(typed, current) };
 }
 
-const detectNames = (shape: ChordShape, songKey: string) => (isBlank(shape) ? [] : nameChord(shape, songKey || undefined));
+const detectNames = (shape: ChordShape, songKey: string, tuning?: readonly number[]) => (isBlank(shape) ? [] : nameChord(shape, songKey || undefined, tuning));
 
 /** What the UI shows: a typed name wins over the detected one. */
 function nameView(typed: string | null, current: ChordName | undefined) {
@@ -58,10 +60,10 @@ function nameView(typed: string | null, current: ChordName | undefined) {
 
 const selectedFinger = (state: EditorState) => state.shape.dots.find((d) => d.string === state.selected)?.finger ?? null;
 
-export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, initialName = null }: Props) {
+export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, initialName = null, tuning }: Props) {
   const [state, dispatch] = useReducer(editorReducer, initialShape, initState);
   const [songKey, setSongKey] = useState(initialKey);
-  const names = useChordNames(state.shape, songKey, initialName);
+  const names = useChordNames(state.shape, songKey, initialName, tuning);
   const { candidates, current, displayName, shownCurrent } = names;
   const blank = isBlank(state.shape);
   const save = () => onSave?.({ name: displayName, frets: toFretString(state.shape), shape: state.shape });
@@ -69,7 +71,7 @@ export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, i
   return (
     <section className="editor" aria-label="Chord editor">
       <div className="editor-stage card">
-        <NamePanel shape={state.shape} name={displayName} inKey={!!shownCurrent?.inKey} songKey={songKey} />
+        <NamePanel shape={state.shape} name={displayName} inKey={!!shownCurrent?.inKey} songKey={songKey} tuning={tuning} />
         <ChordDiagram state={state} dispatch={dispatch} />
         <RefusalHint refusal={state.refusal} />
         <PositionStepper startFret={state.startFret} dispatch={dispatch} />
@@ -128,7 +130,7 @@ function NameField({ value, detected, disabled, onChange }: { value: string; det
   );
 }
 
-function NamePanel({ shape, name, inKey, songKey }: { shape: ChordShape; name: string; inKey: boolean; songKey: string }) {
+function NamePanel({ shape, name, inKey, songKey, tuning }: { shape: ChordShape; name: string; inKey: boolean; songKey: string; tuning?: readonly number[] }) {
   if (isBlank(shape)) {
     return (
       <header className="name-panel is-empty">
@@ -140,15 +142,15 @@ function NamePanel({ shape, name, inKey, songKey }: { shape: ChordShape; name: s
     <header className="name-panel">
       <ChordSymbol symbol={name} />
       <p className="name-notes" aria-label="Notes played">
-        {playedNotes(shape, songKey).join(' · ')}
+        {playedNotes(shape, songKey, tuning).join(' · ')}
         <InKeyBadge songKey={songKey} inKey={inKey} />
       </p>
     </header>
   );
 }
 
-const playedNotes = (shape: ChordShape, songKey: string) =>
-  soundingMidi(shape)
+const playedNotes = (shape: ChordShape, songKey: string, tuning?: readonly number[]) =>
+  soundingMidi(shape, tuning)
     .filter((m): m is number => m !== null)
     .map((m) => spell(m, spellingForKey(songKey || undefined)));
 

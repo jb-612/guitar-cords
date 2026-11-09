@@ -611,3 +611,7 @@
   font-size: 12px;
   color: var(--ink);
 }
+
+.capo-row .mini-field select[aria-label='Tuning'] {
+  width: 170px;
+}

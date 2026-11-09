@@ -17,6 +17,7 @@ import { COMMON_TIME_SIGNATURES, formatTimeSignature, lengthName, shortLength, u
 import { useBarDrag, type BarDragView } from './useBarDrag';
 import type { BarSelection } from './useBarSelection';
 import { describeKey } from './TransposeSheet';
+import { TUNINGS, tuningById, tuningIdOf } from '../music/tunings';
 import { MAX_CAPO, soundingKey, withCapo } from './transposeSong';
 import { useHitDrag, type DragView } from './useHitDrag';
 import { relativeKey, romanNumeral } from '../music/roman';
@@ -245,6 +246,16 @@ function CapoRow({ song, update, onTranspose }: { song: Song; update: Update; on
           {CAPO_FRETS.map((f) => (
             <option key={f} value={f}>
               {f === 0 ? 'None' : f}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="mini-field">
+        <span className="section-label">Tuning</span>
+        <select aria-label="Tuning" value={tuningIdOf(song.tuning)} onChange={(e) => update((s) => ({ ...s, tuning: tuningById(e.target.value).notes }))}>
+          {TUNINGS.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
             </option>
           ))}
         </select>

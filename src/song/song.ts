@@ -77,6 +77,8 @@ export interface Song {
   sound?: GuitarSound;
   /** Swing the eighth notes (played as triplet feel). */
   swing?: boolean;
+  /** Open-string pitches, low E string first (default standard tuning). */
+  tuning?: number[];
 }
 
 export interface ChordChoice {

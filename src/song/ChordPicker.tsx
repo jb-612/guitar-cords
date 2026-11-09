@@ -18,6 +18,8 @@ interface Props {
   songKey: string | null;
   /** The creator's own fingerings, newest first. */
   myChords?: ChordChoice[];
+  /** The built-in shapes assume standard tuning; in other tunings only own chords are offered. */
+  standardTuning?: boolean;
   /** `units` is the chosen length; omitted means fill the available space. */
   onPick: (choice: ChordChoice, units?: number) => void;
   onCreate: () => void;
@@ -49,7 +51,7 @@ const LENGTHS: [string, number | null][] = [
   ['Sixteenth', unitsOf(16)],
 ];
 
-export function ChordPicker({ songKey, myChords = [], onPick: pickChord, onCreate, onClose }: Props) {
+export function ChordPicker({ songKey, myChords = [], standardTuning = true, onPick: pickChord, onCreate, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [length, setLength] = useState<number | null>(null);
   const q = query.trim();
@@ -78,7 +80,12 @@ export function ChordPicker({ songKey, myChords = [], onPick: pickChord, onCreat
           ))}
         </div>
       </div>
-      {q ? <SearchResults query={q} mine={matching(myChords, q)} onPick={onPick} onCreate={onCreate} /> : <Library songKey={songKey} mine={myChords.map(asItem)} onPick={onPick} />}
+      {!standardTuning && <p className="picker-empty">The library shapes are for standard tuning. In this tuning, draw chords on the fretboard (they're named for your tuning) — they're kept in My chords.</p>}
+      {q ? (
+        <SearchResults query={q} mine={matching(myChords, q)} onPick={onPick} onCreate={onCreate} standard={standardTuning} />
+      ) : (
+        <Library songKey={songKey} mine={myChords.map(asItem)} onPick={onPick} standard={standardTuning} />
+      )}
       <div className="picker-footer">
         <button type="button" className="btn ghost create-btn" onClick={onCreate}>
           <span aria-hidden="true">＋</span> Create a new chord
@@ -88,10 +95,18 @@ export function ChordPicker({ songKey, myChords = [], onPick: pickChord, onCreat
   );
 }
 
-function Library({ songKey, mine, onPick }: { songKey: string | null; mine: Item[]; onPick: (c: ChordChoice) => void }) {
+function Library({ songKey, mine, onPick, standard }: { songKey: string | null; mine: Item[]; onPick: (c: ChordChoice) => void; standard: boolean }) {
   return (
     <>
       {mine.length > 0 && <ChordGroup label="My chords" items={mine} onPick={onPick} />}
+      {standard && <StandardLibrary songKey={songKey} onPick={onPick} />}
+    </>
+  );
+}
+
+function StandardLibrary({ songKey, onPick }: { songKey: string | null; onPick: (c: ChordChoice) => void }) {
+  return (
+    <>
       {songKey && <ChordGroup label={`In the key of ${songKey}`} items={withShapes(diatonicChords(songKey))} onPick={onPick} featured />}
       <ChordGroup label="Common chords" items={withShapes(COMMON)} onPick={onPick} />
     </>
@@ -103,19 +118,20 @@ interface SearchProps {
   mine: Item[];
   onPick: (c: ChordChoice) => void;
   onCreate: () => void;
+  standard: boolean;
 }
 
-function SearchResults({ query, mine, onPick, onCreate }: SearchProps) {
+function SearchResults({ query, mine, onPick, onCreate, standard }: SearchProps) {
   return (
     <>
       {mine.length > 0 && <ChordGroup label="My chords" items={mine} onPick={onPick} />}
-      <StandardResults query={query} quiet={mine.length > 0} onPick={onPick} onCreate={onCreate} />
+      {standard && <StandardResults query={query} quiet={mine.length > 0} onPick={onPick} onCreate={onCreate} />}
     </>
   );
 }
 
 /** Fingerings for a standard chord name. `quiet` hides the "not found" message when own chords matched. */
-function StandardResults({ query, quiet, onPick, onCreate }: Omit<SearchProps, 'mine'> & { quiet: boolean }) {
+function StandardResults({ query, quiet, onPick, onCreate }: Omit<SearchProps, 'mine' | 'standard'> & { quiet: boolean }) {
   const parsed = parseChord(query);
   if (!parsed && quiet) return null;
   if (!parsed) return <p className="picker-empty">No chord called “{query}”. Check the spelling, or create it on the fretboard.</p>;

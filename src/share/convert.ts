@@ -197,12 +197,12 @@ interface Sounding {
   fret: number;
 }
 
-function soundingNotes(hit: ChordHit, capo: number): Sounding[] {
+function soundingNotes(hit: ChordHit, capo: number, tuning: readonly number[]): Sounding[] {
   return Array.from({ length: STRING_COUNT }, (_, s) => s)
     .filter((s) => !hit.shape.muted.includes(s))
     .map((s) => {
       const fret = hit.shape.dots.find((d) => d.string === s)?.fret ?? 0;
-      return { midi: STANDARD_TUNING[s]! + fret + capo, string: STRING_COUNT - s, fret };
+      return { midi: tuning[s]! + fret + capo, string: STRING_COUNT - s, fret };
     });
 }
 
@@ -214,8 +214,8 @@ function tieXml(i: number, count: number) {
   };
 }
 
-function hitXml(hit: ChordHit, capo: number, lyric: string | null): string {
-  const notes = soundingNotes(hit, capo);
+function hitXml(hit: ChordHit, capo: number, lyric: string | null, tuning: readonly number[]): string {
+  const notes = soundingNotes(hit, capo, tuning);
   if (notes.length === 0) return restXml(hit.units);
   const parts = splitUnits(hit.units);
   return parts
@@ -264,7 +264,7 @@ function measureXml(song: Song, bar: Bar, i: number, prev: { key: string | null 
     const key = `${e.symbol}|${JSON.stringify(e.shape)}`;
     const harmony = key !== prev.key ? harmonyXml(e.symbol) : '';
     prev.key = key;
-    const xml = harmony + hitXml(e, song.capo ?? 0, lyric);
+    const xml = harmony + hitXml(e, song.capo ?? 0, lyric, song.tuning ?? STANDARD_TUNING);
     lyric = null;
     return xml;
   });

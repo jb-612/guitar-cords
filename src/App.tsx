@@ -18,6 +18,7 @@ import { ChordPicker } from './song/ChordPicker';
 import { HitSheet } from './song/HitSheet';
 import { barUnits } from './song/rhythm';
 import { applyPattern } from './song/patterns';
+import { isStandard } from './music/tunings';
 import { setEndings, setRepeatEnd, setRepeatStart, setSection } from './song/structure';
 import { useBarSelection, type BarSelection } from './song/useBarSelection';
 import { SongScreen } from './song/SongScreen';
@@ -283,6 +284,7 @@ function PickerSheet({ song, myChords, setOverlay, close, apply, restId }: Overl
       <ChordPicker
         songKey={song.key}
         myChords={myChords}
+        standardTuning={isStandard(song.tuning)}
         onPick={(choice, units) => apply(placeChord(choice, restId, units))}
         onCreate={() => setOverlay({ kind: 'editor', restId })}
         onClose={close}
@@ -331,7 +333,7 @@ function EditorSheet({ song, close, apply, remember, hitId, restId }: OverlayPro
     <Sheet label={start.title} onClose={close} wide>
       <h2 className="sheet-title editor-sheet-title">{start.title}</h2>
       {existing && <AlsoUpdate song={song} hit={existing} checked={everywhere} onChange={setEverywhere} />}
-      <ChordEditor initialShape={start.shape} initialName={start.name} initialKey={start.key} onSave={save} onCancel={close} />
+      <ChordEditor initialShape={start.shape} initialName={start.name} initialKey={start.key} tuning={song.tuning} onSave={save} onCancel={close} />
     </Sheet>
   );
 }
