@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChordEditor } from './ChordEditor';
+import { shapeFromFrets } from '../music/chordShape';
 
 const cell = (stringNumber: number, fret: number) => screen.getByRole('button', { name: `String ${stringNumber}, fret ${fret}` });
 const chordName = () => screen.getByTestId('chord-name');
@@ -93,6 +94,19 @@ describe('ChordEditor', () => {
     for (const [s, f] of [[4, 4], [3, 3], [2, 2], [1, 2]] as const) await user.click(cell(s, f));
     await user.selectOptions(screen.getByLabelText('Song key'), 'Db');
     expect(chordName()).toHaveAccessibleName('Gb');
+  });
+
+  it('opens an existing shape for editing', () => {
+    render(<ChordEditor initialShape={shapeFromFrets('022000')} />);
+    expect(chordName()).toHaveAccessibleName('Em');
+  });
+
+  it('can be cancelled', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<ChordEditor onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalled();
   });
 
   it('saves the shape with its chosen name', async () => {

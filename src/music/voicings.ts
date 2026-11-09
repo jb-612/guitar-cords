@@ -27,6 +27,7 @@ const E_SHAPES: Record<string, Pattern> = {
 const A_SHAPES: Record<string, Pattern> = {
   '': [null, 0, 2, 2, 2, 0], m: [null, 0, 2, 2, 1, 0], '7': [null, 0, 2, 0, 2, 0],
   m7: [null, 0, 2, 0, 1, 0], maj7: [null, 0, 2, 1, 2, 0], sus2: [null, 0, 2, 2, 0, 0], sus4: [null, 0, 2, 2, 3, 0],
+  dim: [null, 0, 1, 2, 1, null],
 };
 const E_STRING_CHROMA = 4;
 const A_STRING_CHROMA = 9;

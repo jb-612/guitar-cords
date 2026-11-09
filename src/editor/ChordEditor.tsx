@@ -2,6 +2,7 @@ import { useMemo, useReducer, useState } from 'react';
 import { nameChord, type ChordName } from '../music/chordNaming';
 import { soundingMidi, toFretString, type ChordShape, type Finger } from '../music/chordShape';
 import { spell, spellingForKey } from '../music/chordSymbol';
+import { KeySelect } from '../components/KeySelect';
 import { ChordDiagram } from './ChordDiagram';
 import { ChordSymbol } from './ChordSymbol';
 import { MAX_START_FRET, editorReducer, initialEditorState, type EditorAction } from './editorReducer';
@@ -15,8 +16,14 @@ export interface SavedChord {
 
 interface Props {
   onSave?: (chord: SavedChord) => void;
+  onCancel?: () => void;
   initialKey?: string;
+  /** Shape to edit; starts empty when omitted. */
+  initialShape?: ChordShape;
 }
+
+const initState = (shape?: ChordShape) =>
+  shape ? editorReducer(initialEditorState, { type: 'load', shape }) : initialEditorState;
 
 const MAX_ALTERNATIVES = 4;
 
@@ -30,8 +37,8 @@ function useChordNames(shape: ChordShape, songKey: string) {
   return { candidates, current, setChosen };
 }
 
-export function ChordEditor({ onSave, initialKey = '' }: Props) {
-  const [state, dispatch] = useReducer(editorReducer, initialEditorState);
+export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape }: Props) {
+  const [state, dispatch] = useReducer(editorReducer, initialShape, initState);
   const [songKey, setSongKey] = useState(initialKey);
   const { candidates, current, setChosen } = useChordNames(state.shape, songKey);
   const selectedDot = state.shape.dots.find((d) => d.string === state.selected);
@@ -51,6 +58,11 @@ export function ChordEditor({ onSave, initialKey = '' }: Props) {
         <Alternatives candidates={candidates} current={current} onPick={setChosen} />
         <KeySelect value={songKey} onChange={setSongKey} />
         <div className="editor-actions">
+          {onCancel && (
+            <button type="button" className="btn ghost" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
           <button type="button" className="btn ghost" onClick={() => dispatch({ type: 'clear' })} disabled={isBlank(state.shape)}>
             Clear
           </button>
@@ -173,28 +185,5 @@ function Alternatives({ candidates, current, onPick }: { candidates: ChordName[]
         ))}
       </div>
     </div>
-  );
-}
-
-const KEYS = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
-
-function KeySelect({ value, onChange }: { value: string; onChange: (k: string) => void }) {
-  return (
-    <label className="key-select">
-      <span className="section-label">Song key</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">No key</option>
-        <optgroup label="Major">
-          {KEYS.map((k) => (
-            <option key={k} value={k}>{k} major</option>
-          ))}
-        </optgroup>
-        <optgroup label="Minor">
-          {['A', 'E', 'B', 'F#', 'C#', 'G#', 'D', 'G', 'C', 'F', 'Bb', 'Eb'].map((k) => (
-            <option key={k} value={`${k}m`}>{k} minor</option>
-          ))}
-        </optgroup>
-      </select>
-    </label>
   );
 }

@@ -27,3 +27,27 @@
   text-transform: uppercase;
   color: var(--ink-soft);
 }
+
+.editor-sheet-title {
+  padding: 4px 16px 12px;
+}
+
+.chord-actions-preview {
+  display: grid;
+  place-items: center;
+  padding: 4px 0 16px;
+}
+
+.chord-actions-preview .chord-thumb {
+  width: 96px;
+}
+
+.chord-actions-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.btn.danger {
+  color: var(--danger);
+}

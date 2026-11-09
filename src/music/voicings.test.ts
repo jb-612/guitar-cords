@@ -23,6 +23,12 @@ describe('suggestVoicings', () => {
     for (const s of v) expect(nameChord(shapeFromFrets(s.frets)).map((n) => n.symbol)).toContain('Bbm');
   });
 
+  it('has a movable shape for every diatonic triad type, including diminished (F#dim)', () => {
+    const v = suggestVoicings('F#dim');
+    expect(v.length).toBeGreaterThan(0);
+    for (const s of v) expect(nameChord(shapeFromFrets(s.frets)).map((n) => n.symbol)).toContain('F#dim');
+  });
+
   it('handles enharmonic roots (A#m -> same shapes as Bbm)', () => {
     expect(suggestVoicings('A#m').map((v) => v.frets)).toEqual(suggestVoicings('Bbm').map((v) => v.frets));
   });
