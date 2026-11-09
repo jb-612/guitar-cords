@@ -1,4 +1,5 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { useContext, useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { LeftHandedContext } from '../settings/useSettings';
 import { STRING_COUNT, VISIBLE_FRETS, type ChordShape, type FretDot, type Finger } from '../music/chordShape';
 import { BOARD_HEIGHT, BOARD_WIDTH, G, VIEW_HEIGHT, VIEW_WIDTH, cellCenterY, fretY, stringX } from './diagramGeometry';
 import type { EditorAction, EditorState } from './editorReducer';
@@ -15,6 +16,15 @@ const DOUBLE_INLAY = 12;
 /** Guitarists number strings 6 (low E) to 1 (high E). */
 export const stringNumber = (s: number) => STRING_COUNT - s;
 export const fingerLabel = (f: Finger) => (f === 0 ? 'T' : String(f));
+
+const MIRRORED = `translate(${VIEW_WIDTH} 0) scale(-1 1)`;
+
+const diagramClass = (drag: DragState | null, refused: boolean, lefty: boolean) =>
+  ['diagram', drag && `is-${drag.mode}`, refused && 'is-refused', lefty && 'is-lefty'].filter(Boolean).join(' ');
+
+/** Arrow left/right follow what's on screen, so they swap when the diagram is mirrored. */
+const MIRROR: Record<string, string> = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft' };
+const keyName = (e: KeyboardEvent, lefty: boolean) => `${e.shiftKey ? 'Shift+' : ''}${lefty ? (MIRROR[e.key] ?? e.key) : e.key}`;
 
 const KEY_ACTIONS: Record<string, EditorAction> = {
   ArrowLeft: { type: 'nudge', dString: -1, dFret: 0 },
@@ -40,12 +50,13 @@ interface Props {
 
 export function ChordDiagram({ state, dispatch }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { drag, onDotPointerDown, onPointerMove, onPointerUp, consumeDragClick } = useDotDrag({ svgRef, shape: state.shape, startFret: state.startFret, dispatch });
+  const lefty = useContext(LeftHandedContext);
+  const { drag, onDotPointerDown, onPointerMove, onPointerUp, consumeDragClick } = useDotDrag({ svgRef, shape: state.shape, startFret: state.startFret, dispatch, mirrored: lefty });
   const tap = (action: EditorAction) => {
     if (!consumeDragClick()) dispatch(action);
   };
   const onKeyDown = (e: KeyboardEvent) => {
-    const action = KEY_ACTIONS[e.shiftKey ? `Shift+${e.key}` : e.key];
+    const action = KEY_ACTIONS[keyName(e, lefty)];
     if (!action) return;
     e.preventDefault();
     dispatch(action);
@@ -54,7 +65,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
   return (
     <svg
       ref={svgRef}
-      className={`diagram${drag ? ` is-${drag.mode}` : ''}${state.refusal ? ' is-refused' : ''}`}
+      className={diagramClass(drag, !!state.refusal, lefty)}
       viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
       role="application"
       aria-label="Chord diagram. Tap a cell to place a finger; arrow keys move the selected finger; Shift plus left or right arrow stretches it into a barre."
@@ -65,6 +76,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
+      <g transform={lefty ? MIRRORED : undefined}>
       <Board startFret={state.startFret} />
       <NutRow shape={state.shape} onToggle={(string) => tap({ type: 'nut', string })} />
       <Cells startFret={state.startFret} onTap={(string, fret) => tap({ type: 'cell', string, fret })} />
@@ -76,6 +88,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
         onPointerDown={onDotPointerDown}
       />
       {drag?.mode === 'move' && <DragGhost drag={drag} shape={state.shape} />}
+      </g>
     </svg>
   );
 }

@@ -43,3 +43,13 @@
   font-size: 8px;
   font-style: italic;
 }
+
+.chord-thumb.is-lefty {
+  transform: scaleX(-1);
+}
+
+.chord-thumb.is-lefty text {
+  transform: scaleX(-1);
+  transform-box: fill-box;
+  transform-origin: center;
+}

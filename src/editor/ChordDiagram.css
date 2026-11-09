@@ -264,3 +264,10 @@ circle.inlay {
     transform: translateX(-2px);
   }
 }
+
+/* Left-handed: the board is mirrored; text is flipped back so it stays readable. */
+.diagram.is-lefty text {
+  transform: scaleX(-1);
+  transform-box: fill-box;
+  transform-origin: center;
+}

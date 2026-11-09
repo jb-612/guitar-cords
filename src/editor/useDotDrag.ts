@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react';
 import type { ChordShape } from '../music/chordShape';
-import { nearestString, pointToCell } from './diagramGeometry';
+import { nearestString, pointToCell, VIEW_WIDTH } from './diagramGeometry';
 import type { EditorAction } from './editorReducer';
 
 const DRAG_THRESHOLD = 6;
@@ -36,6 +36,7 @@ function toSvgPoint(svg: SVGSVGElement, e: PointerEvent): { x: number; y: number
 }
 
 const pointIn = (svgRef: RefObject<SVGSVGElement | null>, e: PointerEvent) => (svgRef.current ? toSvgPoint(svgRef.current, e) : null);
+const unmirror = (p: { x: number; y: number } | null, mirrored: boolean) => (p && mirrored ? { ...p, x: VIEW_WIDTH - p.x } : p);
 
 /** Keep receiving this pointer's events while it moves off the dot (some pointers can't be captured). */
 function capture(el: Element, pointerId: number) {
@@ -53,9 +54,11 @@ interface Options {
   shape: ChordShape;
   startFret: number;
   dispatch: (a: EditorAction) => void;
+  /** Left-handed: the drawing is mirrored, so pointer x is mirrored back to board coordinates. */
+  mirrored?: boolean;
 }
 
-export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
+export function useDotDrag({ svgRef, shape, startFret, dispatch, mirrored = false }: Options) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const origin = useRef({ x: 0, y: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -77,7 +80,7 @@ export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
 
   const onDotPointerDown = useCallback(
     (e: PointerEvent, dot: { string: number; fret: number }) => {
-      const p = svgRef.current && toSvgPoint(svgRef.current, e);
+      const p = unmirror(svgRef.current && toSvgPoint(svgRef.current, e), mirrored);
       if (!p) return;
       capture(svgRef.current!, e.pointerId);
       origin.current = p;
@@ -85,7 +88,7 @@ export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
       clearTimeout(holdTimer.current);
       holdTimer.current = setTimeout(() => startStretch(dot.string), HOLD_MS);
     },
-    [svgRef, startStretch],
+    [svgRef, startStretch, mirrored],
   );
 
   const follow = (drag: DragState, p: { x: number; y: number }) => {
@@ -96,7 +99,7 @@ export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
 
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
-      const p = drag ? pointIn(svgRef, e) : null;
+      const p = drag ? unmirror(pointIn(svgRef, e), mirrored) : null;
       if (!drag || !p) return;
       if (drag.mode === 'stretch') {
         dispatch({ type: 'barre', base: drag.base!, anchor: drag.from, to: nearestString(p.x) });
@@ -104,7 +107,7 @@ export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
         follow(drag, p);
       }
     },
-    [drag, svgRef, dispatch],
+    [drag, svgRef, dispatch, mirrored],
   );
 
   const onPointerUp = useCallback(() => {

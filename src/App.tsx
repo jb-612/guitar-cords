@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LibrarySheet } from './library/LibrarySheet';
 import { useLibrary, type LibraryApi } from './library/useLibrary';
+import { SettingsSheet } from './settings/SettingsSheet';
+import { Tour } from './settings/Tour';
+import { LeftHandedContext, useSettings, type SettingsApi } from './settings/useSettings';
 import { AccountSheet, statusText } from './sync/AccountSheet';
 import { PrintSheet } from './share/PrintSheet';
 import { ShareSheet } from './share/ShareSheet';
@@ -58,7 +61,8 @@ type Overlay =
   | { kind: 'library' }
   | { kind: 'transpose' }
   | { kind: 'account' }
-  | { kind: 'share' };
+  | { kind: 'share' }
+  | { kind: 'settings' };
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
@@ -129,6 +133,7 @@ function useUndoKeys(library: LibraryApi) {
 
 export function App() {
   const library = useLibrary();
+  const settings = useSettings();
   const { song, update: setSong } = library;
   useUndoKeys(library);
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
@@ -146,6 +151,7 @@ export function App() {
   };
 
   return (
+    <LeftHandedContext.Provider value={settings.settings.leftHanded}>
     <div className="app">
       <header className="app-bar">
         <span className="brand">Guitar Cords</span>
@@ -164,6 +170,9 @@ export function App() {
           </button>
           <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'share' })}>
             Share
+          </button>
+          <button type="button" className="icon-btn small" aria-label="Settings" title="Settings" onClick={() => setOverlay({ kind: 'settings' })}>
+            ⚙
           </button>
           <button type="button" className="new-song-btn account-btn" aria-label="Account" title={statusText(sync.status)} onClick={() => setOverlay({ kind: 'account' })}>
             <span className={`account-dot is-${sync.status}`} aria-hidden="true" />
@@ -191,8 +200,10 @@ export function App() {
         </p>
       )}
       <PrintSheet song={song} />
-      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} selection={selection} />
+      {settings.tourOpen && <Tour onClose={settings.closeTour} />}
+      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} selection={selection} settings={settings} />
     </div>
+    </LeftHandedContext.Provider>
   );
 }
 
@@ -207,6 +218,7 @@ interface OverlayProps {
   library: LibraryApi;
   sync: SyncApi;
   selection: BarSelection;
+  settings: SettingsApi;
 }
 
 type OverlayRenderers = { [K in Overlay['kind']]: (props: OverlayProps, overlay: Extract<Overlay, { kind: K }>) => React.ReactNode };
@@ -219,6 +231,11 @@ const OVERLAYS: OverlayRenderers = {
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
   library: (p) => <LibraryOverlay {...p} />,
+  settings: (p) => (
+    <Sheet label="Settings" onClose={p.close}>
+      <SettingsSheet settings={p.settings} onClose={p.close} />
+    </Sheet>
+  ),
   share: (p) => (
     <Sheet label="Share & export" onClose={p.close}>
       <ShareSheet

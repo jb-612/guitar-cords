@@ -2,7 +2,9 @@
  * Small, static chord diagram for libraries and song bars. Decorative:
  * the surrounding button carries the chord name for screen readers.
  */
+import { useContext } from 'react';
 import { STRING_COUNT, viewStartFret, type ChordShape } from '../music/chordShape';
+import { LeftHandedContext } from '../settings/useSettings';
 import './ChordThumb.css';
 
 const FRETS = 4;
@@ -18,8 +20,9 @@ const x = (s: number) => LEFT + s * GAP_X;
 export function ChordThumb({ shape }: { shape: ChordShape }) {
   const start = viewStartFret(shape);
   const strings = Array.from({ length: STRING_COUNT }, (_, s) => s);
+  const lefty = useContext(LeftHandedContext);
   return (
-    <svg className="chord-thumb" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} aria-hidden="true">
+    <svg className={`chord-thumb${lefty ? ' is-lefty' : ''}`} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} aria-hidden="true">
       {Array.from({ length: FRETS + 1 }, (_, r) => (
         <line key={r} className={r === 0 && start === 1 ? 'ct-nut' : 'ct-fret'} x1={x(0)} x2={x(5)} y1={TOP + r * GAP_Y} y2={TOP + r * GAP_Y} />
       ))}
