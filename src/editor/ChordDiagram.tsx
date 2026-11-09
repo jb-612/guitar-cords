@@ -202,10 +202,13 @@ interface DotsProps {
 
 const dragging = (drag: DragState | null, string: number, mode: DragState['mode']) => drag?.mode === mode && drag.from === string;
 
-function dotClasses(d: FretDot, selected: number | null, drag: DragState | null): string[] {
+/** The selected finger: a whole barre is selected when any of its pieces is. */
+const isSelectedFinger = (d: FretDot, selected: FretDot | undefined) => !!selected && d.finger === selected.finger && d.fret === selected.fret;
+
+function dotClasses(d: FretDot, selected: FretDot | undefined, drag: DragState | null): string[] {
   const flags: [string, boolean][] = [
     ['is-thumb', d.finger === 0],
-    ['is-selected', selected === d.string],
+    ['is-selected', isSelectedFinger(d, selected)],
     ['is-lifted', dragging(drag, d.string, 'move')],
     ['is-pressing', dragging(drag, d.string, 'pressing')],
     ['is-stretching', dragging(drag, d.string, 'stretch')],
@@ -215,10 +218,11 @@ function dotClasses(d: FretDot, selected: number | null, drag: DragState | null)
 
 function Dots({ state, drag, onTap, onPointerDown }: DotsProps) {
   const visible = state.shape.dots.filter((d) => inWindow(d.fret, state.startFret));
+  const selectedDot = state.shape.dots.find((d) => d.string === state.selected);
   return (
     <g className="dots">
       {visible.map((d) => {
-        const classes = dotClasses(d, state.selected, drag);
+        const classes = dotClasses(d, selectedDot, drag);
         return (
           <g
             key={d.string}

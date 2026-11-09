@@ -95,6 +95,19 @@ describe('ChordEditor', () => {
     expect(screen.getByTestId('barre-1@1')).toBeInTheDocument();
   });
 
+  it('selecting one piece of a barre highlights the whole barre, and Delete lifts it', async () => {
+    const user = userEvent.setup();
+    render(<ChordEditor />);
+    await user.click(cell(6, 1));
+    const board = screen.getByRole('application');
+    fireEvent.keyDown(board, { key: 'ArrowRight', shiftKey: true });
+    fireEvent.keyDown(board, { key: 'ArrowRight', shiftKey: true });
+    for (const s of [0, 1, 2]) expect(screen.getByTestId(`dot-${s}`)).toHaveClass('is-selected');
+    fireEvent.keyDown(board, { key: 'Delete' });
+    expect(screen.queryByTestId('dot-0')).toBeNull();
+    expect(screen.queryByTestId('dot-2')).toBeNull();
+  });
+
   it('teaches the barre gesture in the help text', () => {
     render(<ChordEditor />);
     expect(screen.getByText(/hold a finger, then drag across strings for a barre/i)).toBeInTheDocument();

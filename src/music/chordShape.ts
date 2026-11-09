@@ -42,48 +42,130 @@ function nextFinger(shape: ChordShape, fret: number): Finger {
   return shape.dots.find((d) => d.fret === fret)?.finger ?? 4;
 }
 
-const partOfBarre = (shape: ChordShape, dot: FretDot) =>
-  shape.dots.some((d) => d.string !== dot.string && d.finger === dot.finger && d.fret === dot.fret);
+// --- Barres ---------------------------------------------------------------
+// A barre is one finger at one fret across several strings. Move, remove and
+// change-finger act on the whole barre; nothing may sit under it (lower or same fret).
+
+interface Barre {
+  finger: Finger;
+  fret: number;
+  lo: number;
+  hi: number;
+}
+
+const sameBarre = (d: FretDot, ref: { finger: Finger; fret: number }) => d.finger === ref.finger && d.fret === ref.fret;
+const span = (lo: number, hi: number) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+const farthestFrom = (strings: number[], from: number) =>
+  strings.reduce((best, s) => (Math.abs(s - from) > Math.abs(best - from) ? s : best), from);
+const byString = (dots: FretDot[]) => [...dots].sort((a, b) => a.string - b.string);
+const withoutBarre = (shape: ChordShape, b: Barre) => shape.dots.filter((d) => !sameBarre(d, b));
+
+/** The barre a dot belongs to (its finger at its fret on 2+ strings), or null. */
+function barreOf(shape: ChordShape, dot: FretDot): Barre | null {
+  const strings = shape.dots.filter((d) => sameBarre(d, dot)).map((d) => d.string);
+  if (strings.length < 2) return null;
+  return { finger: dot.finger, fret: dot.fret, lo: Math.min(...strings), hi: Math.max(...strings) };
+}
+
+/** A barre lying across `string` (between its end strings), or null. */
+function barreAcross(shape: ChordShape, string: number): Barre | null {
+  for (const d of shape.dots) {
+    const b = barreOf(shape, d);
+    if (b && b.lo <= string && string <= b.hi) return b;
+  }
+  return null;
+}
+
+/** A finger at `fret` on `string` would be under a barre: impossible to play. */
+function underBarre(shape: ChordShape, string: number, fret: number): boolean {
+  const b = barreAcross(shape, string);
+  return !!b && fret <= b.fret;
+}
+
+/** Lay a barre over `dots`: strings fretted higher keep their finger; lower dots and mutes give way. */
+function layBarre(dots: FretDot[], muted: number[], b: Barre): ChordShape {
+  const inRange = (s: number) => s >= b.lo && s <= b.hi;
+  const kept = dots.filter((d) => !inRange(d.string) || d.fret > b.fret);
+  const added = span(b.lo, b.hi)
+    .filter((s) => !kept.some((d) => d.string === s))
+    .map((s) => ({ string: s, fret: b.fret, finger: b.finger }));
+  return { dots: byString([...kept, ...added]), muted: muted.filter((s) => !inRange(s)) };
+}
+
+/** Strings inside a barre with no finger of their own are held by the barre (e.g. after lifting a finger above it). */
+function fillBarres(shape: ChordShape): ChordShape {
+  const barres = shape.dots.map((d) => barreOf(shape, d)).filter((b): b is Barre => b !== null);
+  const gaps = barres.flatMap((b) =>
+    span(b.lo, b.hi)
+      .filter((s) => !dotOn(shape, s) && !shape.muted.includes(s))
+      .map((s) => ({ string: s, fret: b.fret, finger: b.finger })),
+  );
+  return gaps.length ? { ...shape, dots: byString([...shape.dots, ...gaps]) } : shape;
+}
+
+/** A loose finger keeps its number when moved by a tap; on a barred string the tap places a new finger above the barre. */
+const fingerForTap = (shape: ChordShape, existing: FretDot | undefined, fret: number): Finger =>
+  existing && !barreOf(shape, existing) ? existing.finger : nextFinger(shape, fret);
 
 /** Tap on a string at a fret: add a dot, move this string's dot there, or remove it if tapped again. */
 export function tapString(shape: ChordShape, string: number, fret: number): ChordShape {
   const existing = dotOn(shape, string);
-  if (existing?.fret === fret) return { ...shape, dots: withoutString(shape, string) };
-  // A string under a barre keeps the barre; the tap places a new finger above it.
-  const keepsFinger = existing && !partOfBarre(shape, existing);
-  const finger = keepsFinger ? existing.finger : nextFinger(shape, fret);
+  if (existing?.fret === fret) return removeDot(shape, string);
+  if (underBarre(shape, string, fret)) return shape;
+  const finger = fingerForTap(shape, existing, fret);
   return {
     dots: [...withoutString(shape, string), { string, fret, finger }],
     muted: unmute(shape.muted, string),
   };
 }
 
+/** Change a dot's finger; every piece of a barre changes together. */
 export function setFinger(shape: ChordShape, string: number, finger: Finger): ChordShape {
-  return { ...shape, dots: shape.dots.map((d) => (d.string === string ? { ...d, finger } : d)) };
+  const dot = dotOn(shape, string);
+  if (!dot) return shape;
+  const b = barreOf(shape, dot);
+  const hit = (d: FretDot) => (b ? sameBarre(d, b) : d.string === string);
+  return { ...shape, dots: shape.dots.map((d) => (hit(d) ? { ...d, finger } : d)) };
 }
 
-/** Drag a dot to a new string/fret. Returns the same shape if the drop is not allowed. */
 const onBoard = (to: { string: number; fret: number }) => to.fret >= 1 && to.string >= 0 && to.string < STRING_COUNT;
 
+/** Drag a dot to a new string/fret (a barre piece drags the whole barre). Returns the same shape if not allowed. */
 export function moveDot(shape: ChordShape, fromString: number, to: { string: number; fret: number }): ChordShape {
   const dot = dotOn(shape, fromString);
-  const occupied = to.string !== fromString && !!dotOn(shape, to.string);
-  if (!dot || occupied || !onBoard(to)) return shape;
-  return {
-    dots: [...withoutString(shape, fromString), { ...dot, string: to.string, fret: to.fret }],
+  if (!dot || !onBoard(to)) return shape;
+  const b = barreOf(shape, dot);
+  return b ? moveBarre(shape, b, to.string - fromString, to.fret) : moveSingle(shape, dot, to);
+}
+
+/** Slide a whole barre; refused if it leaves the board or would cover other fingers. */
+function moveBarre(shape: ChordShape, b: Barre, dString: number, fret: number): ChordShape {
+  const moved = { ...b, lo: b.lo + dString, hi: b.hi + dString, fret };
+  const rest = withoutBarre(shape, b);
+  const covers = rest.some((d) => d.string >= moved.lo && d.string <= moved.hi && d.fret <= fret);
+  if (moved.lo < 0 || moved.hi >= STRING_COUNT || covers) return shape;
+  return layBarre(rest, shape.muted, moved);
+}
+
+/** Move one finger. It may replace a barre piece (sitting above the barre) but never another finger. */
+function moveSingle(shape: ChordShape, dot: FretDot, to: { string: number; fret: number }): ChordShape {
+  const target = dotOn(shape, to.string);
+  const blockedByFinger = !!target && target.string !== dot.string && !barreOf(shape, target);
+  if (blockedByFinger || underBarre(shape, to.string, to.fret)) return shape;
+  const rest = shape.dots.filter((d) => d.string !== dot.string && d.string !== to.string);
+  return fillBarres({
+    dots: byString([...rest, { ...dot, string: to.string, fret: to.fret }]),
     muted: unmute(shape.muted, to.string),
-  };
+  });
 }
 
+/** Lift a finger. Removing any piece of a barre lifts the whole barre. */
 export function removeDot(shape: ChordShape, string: number): ChordShape {
-  return { ...shape, dots: withoutString(shape, string) };
+  const dot = dotOn(shape, string);
+  if (!dot) return shape;
+  const b = barreOf(shape, dot);
+  return b ? { ...shape, dots: withoutBarre(shape, b) } : fillBarres({ ...shape, dots: withoutString(shape, string) });
 }
-
-const sameBarre = (d: FretDot, ref: FretDot) => d.finger === ref.finger && d.fret === ref.fret;
-const barreStrings = (shape: ChordShape, ref: FretDot) => shape.dots.filter((d) => sameBarre(d, ref)).map((d) => d.string);
-const farthestFrom = (strings: number[], from: number) =>
-  strings.reduce((best, s) => (Math.abs(s - from) > Math.abs(best - from) ? s : best), from);
-const span = (lo: number, hi: number) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
 
 /**
  * Stretch the finger on `anchor` into a barre reaching string `to`, at the anchor's fret.
@@ -94,21 +176,17 @@ const span = (lo: number, hi: number) => Array.from({ length: hi - lo + 1 }, (_,
 export function barreTo(shape: ChordShape, anchor: number, to: number): ChordShape {
   const ref = dotOn(shape, anchor);
   if (!ref || to < 0 || to >= STRING_COUNT) return shape;
-  const fixed = farthestFrom(barreStrings(shape, ref), anchor);
-  const [lo, hi] = [Math.min(fixed, to), Math.max(fixed, to)];
-  const inRange = (s: number) => s >= lo && s <= hi;
-  const kept = shape.dots.filter((d) => (inRange(d.string) ? d.fret > ref.fret : !sameBarre(d, ref)));
-  const added = span(lo, hi)
-    .filter((s) => !kept.some((d) => d.string === s))
-    .map((s) => ({ string: s, fret: ref.fret, finger: ref.finger }));
-  return { dots: [...kept, ...added].sort((a, b) => a.string - b.string), muted: shape.muted.filter((s) => !inRange(s)) };
+  const members = shape.dots.filter((d) => sameBarre(d, ref)).map((d) => d.string);
+  const fixed = farthestFrom(members, anchor);
+  const rest = shape.dots.filter((d) => !sameBarre(d, ref));
+  return layBarre(rest, shape.muted, { finger: ref.finger, fret: ref.fret, lo: Math.min(fixed, to), hi: Math.max(fixed, to) });
 }
 
 /** Grow the barre that `string` belongs to by one string in direction `dir` (+1 toward high E). */
 export function extendBarre(shape: ChordShape, string: number, dir: 1 | -1): ChordShape {
   const ref = dotOn(shape, string);
   if (!ref) return shape;
-  const members = barreStrings(shape, ref);
+  const members = shape.dots.filter((d) => sameBarre(d, ref)).map((d) => d.string);
   const edge = dir > 0 ? Math.max(...members) : Math.min(...members);
   return barreTo(shape, edge, edge + dir);
 }

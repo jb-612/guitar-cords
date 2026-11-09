@@ -125,6 +125,52 @@ describe('barreTo', () => {
   });
 });
 
+describe('a barre is one finger', () => {
+  // Finger 1 barred across strings 5..1 (A to high E) at fret 2.
+  const barre = () => barreTo(tapAll([[1, 2]]), 1, 5);
+
+  it('moves as a whole when any piece is dragged to another fret', () => {
+    const s = moveDot(barre(), 2, { string: 2, fret: 1 });
+    expect(toFretString(s)).toBe('011111');
+  });
+
+  it('shifts across strings as a whole', () => {
+    expect(toFretString(moveDot(barre(), 3, { string: 2, fret: 2 }))).toBe('222220');
+  });
+
+  it('refuses to shift off the fretboard', () => {
+    const b = barre();
+    expect(moveDot(b, 3, { string: 4, fret: 2 })).toBe(b);
+  });
+
+  it('the reported bug: dragging two pieces away moves the barre, never splits it', () => {
+    const once = moveDot(barre(), 2, { string: 2, fret: 1 });
+    const twice = moveDot(once, 3, { string: 3, fret: 4 });
+    expect(toFretString(twice)).toBe('044444');
+    expect(new Set(twice.dots.map((d) => `${d.finger}@${d.fret}`)).size).toBe(1);
+  });
+
+  it('refuses another finger dropped under the barre (lower or same fret)', () => {
+    const withTwo = tapString(barre(), 0, 3); // finger 2 on low E, outside the barre
+    expect(moveDot(withTwo, 0, { string: 3, fret: 1 })).toBe(withTwo);
+    expect(moveDot(withTwo, 0, { string: 3, fret: 2 })).toBe(withTwo);
+    expect(toFretString(moveDot(withTwo, 0, { string: 3, fret: 4 }))).toBe('022422');
+  });
+
+  it('refuses a tap under the barre', () => {
+    const b = barre();
+    expect(tapString(b, 3, 1)).toBe(b);
+  });
+
+  it('removing any piece lifts the whole finger', () => {
+    expect(removeDot(barre(), 3).dots).toEqual([]);
+  });
+
+  it('changing the finger of a piece changes the whole barre', () => {
+    expect(setFinger(barre(), 4, 2).dots.every((d) => d.finger === 2)).toBe(true);
+  });
+});
+
 describe('tapString over a barre', () => {
   it('adds a new finger above the barre instead of moving the barre (building an F)', () => {
     const barre = barreTo(tapAll([[0, 1]]), 0, 5);
