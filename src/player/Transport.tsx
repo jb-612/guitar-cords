@@ -15,6 +15,7 @@ export function Transport({ song, player }: { song: Song; player: Player }) {
   const percent = Math.round(settings.speed * 100);
   return (
     <div className="transport" role="toolbar" aria-label="Playback">
+      {player.error && <PlaybackError message={player.error} onDismiss={player.dismissError} />}
       <div className="transport-main">
         <button type="button" className="play-btn" aria-label={player.playing ? 'Pause' : 'Play'} disabled={song.bars.length === 0} onClick={player.playPause}>
           {player.playing ? <PauseIcon /> : <PlayIcon />}
@@ -53,6 +54,20 @@ export function Transport({ song, player }: { song: Song; player: Player }) {
         <Toggle label="Hide fingers" on={settings.hideFingers} onClick={() => update({ hideFingers: !settings.hideFingers })} icon="◌" />
         <Section player={player} />
       </div>
+    </div>
+  );
+}
+
+/** A playback problem, shown above the transport until dismissed. */
+function PlaybackError({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <div className="playback-error" role="alert">
+      <span>
+        <strong>Playback problem.</strong> {message}
+      </span>
+      <button type="button" className="chip-toggle" onClick={onDismiss}>
+        Dismiss
+      </button>
     </div>
   );
 }

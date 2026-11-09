@@ -130,6 +130,7 @@ export function usePlayer(song: Song) {
     playing,
     position,
     error,
+    dismissError: () => setError(null),
     settings,
     section,
     update,

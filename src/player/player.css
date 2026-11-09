@@ -403,3 +403,29 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+.playback-error {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(100% + 8px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius-m);
+  background: var(--danger);
+  color: #fffaf0;
+  font-size: 14px;
+  box-shadow: var(--shadow-lift);
+  animation: sheet-in var(--t-med) var(--ease-out);
+}
+
+.playback-error .chip-toggle {
+  background: rgb(255 255 255 / 0.15);
+  border-color: transparent;
+  color: inherit;
+}

@@ -317,12 +317,25 @@ function ChangeMarkers({ bar }: { bar: Bar }) {
   );
 }
 
+const scrollBehavior = (): ScrollBehavior => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
+/** Keep the playing bar on screen (smooth unless the creator prefers reduced motion). */
+function useFollow(current: boolean) {
+  const ref = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (current) ref.current?.scrollIntoView?.({ block: 'nearest', behavior: scrollBehavior() });
+  }, [current]);
+  return ref;
+}
+
 function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, onPick }: BarProps) {
   const n = index + 1;
+  const ref = useFollow(marks.current);
   const openMenu = () => actions.onBarMenu(index);
   const longPress = useLongPress(openMenu);
   return (
     <li
+      ref={ref}
       className={barClass(marks, reorder.view?.from === index)}
       data-bar-index={index}
       aria-label={`Bar ${n}`}

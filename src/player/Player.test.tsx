@@ -215,4 +215,27 @@ describe('song player', () => {
       expect(engine().last('load')).toContain('snaresidestick');
     });
   });
+
+  describe('errors and following playback', () => {
+    it('shows playback errors and lets the creator dismiss them', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      engine().emit({ type: 'error', message: 'SoundFont could not be loaded' });
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent(/playback problem/i);
+      expect(alert).toHaveTextContent('SoundFont could not be loaded');
+      await user.click(within(alert).getByRole('button', { name: 'Dismiss' }));
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('scrolls the playing bar into view in the chord view', async () => {
+      const scroll = vi.fn();
+      Element.prototype.scrollIntoView = scroll;
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      engine().emit({ type: 'position', bar: 2, unit: 0 });
+      expect(scroll).toHaveBeenCalled();
+      expect(scroll.mock.contexts.at(-1)).toBe(bar(3));
+    });
+  });
 });
