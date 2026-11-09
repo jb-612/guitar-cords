@@ -11,6 +11,17 @@ describe('VOICING_LIBRARY', () => {
   });
 });
 
+describe('the bigger voicing library', () => {
+  it.each(['C7', 'Cm', 'Cm7', 'F#7', 'Bbmaj7', 'Ebm6', 'Ab6', 'Ebdim7', 'Daug', 'C9', 'Bm7b5', 'E7sus4', 'G6', 'Emaj7', 'Am6', 'D/F#', 'C/G', 'G/B', 'F/C', 'Gsus4'])(
+    'has playable fingerings for %s, named as such',
+    (symbol) => {
+      const v = suggestVoicings(symbol);
+      expect(v.length).toBeGreaterThan(0);
+      for (const s of v) expect(nameChord(shapeFromFrets(s.frets)).map((n) => n.symbol)).toContain(symbol);
+    },
+  );
+});
+
 describe('suggestVoicings', () => {
   it('puts the open shape first for an open chord', () => {
     const v = suggestVoicings('G');
@@ -38,7 +49,8 @@ describe('suggestVoicings', () => {
     expect(v!.shape.dots.every((d) => d.finger >= 1)).toBe(true);
   });
 
-  it('returns nothing for unknown symbols', () => {
+  it('returns nothing for unknown symbols or slash chords it has no shape for', () => {
+    expect(suggestVoicings('Bb/Ab')).toEqual([]);
     expect(suggestVoicings('not-a-chord')).toEqual([]);
   });
 });
