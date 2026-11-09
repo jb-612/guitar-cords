@@ -19,7 +19,9 @@ import type { BarSelection } from './useBarSelection';
 import { describeKey } from './TransposeSheet';
 import { MAX_CAPO, soundingKey, withCapo } from './transposeSong';
 import { useHitDrag, type DragView } from './useHitDrag';
-import { setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
+import { relativeKey, romanNumeral } from '../music/roman';
+import { suggestKeys } from '../music/keyDetection';
+import { chordSymbols, setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
 import './SongScreen.css';
 
 /** Edit the song; a `tag` merges quick repeated edits (typing) into one undo step. */
@@ -49,6 +51,8 @@ interface Props extends SongScreenActions {
 export function SongScreen(props: Props) {
   const { song, update, player } = props;
   const { view } = player.settings;
+  const [numerals, setNumerals] = useState(false);
+  const numeralKey = numerals ? song.key : null;
   return (
     <main className="song">
       <input
@@ -59,12 +63,12 @@ export function SongScreen(props: Props) {
         onFocus={(e) => e.target.select()}
       />
       <div className="song-settings">
-        <KeyRow song={song} update={update} />
+        <KeyRow song={song} update={update} numerals={numerals} onNumerals={() => setNumerals(!numerals)} />
         <MeterRow song={song} update={update} />
         <CapoRow song={song} update={update} onTranspose={props.onTranspose} />
       </div>
       <ViewSwitch value={view} onChange={player.setView} />
-      {view === 'chords' && <ChordView {...props} />}
+      {view === 'chords' && <ChordView {...props} numeralKey={numeralKey} />}
       <ScoreHost attach={player.attachHost} hidden={view === 'chords'} />
     </main>
   );
@@ -82,7 +86,7 @@ function ScoreHost({ attach, hidden }: { attach: (el: HTMLDivElement | null) => 
 
 const barIdAt = (song: Song, i: number) => song.bars[i]?.id ?? null;
 
-function ChordView({ song, update, player, selection, ...actions }: Props) {
+function ChordView({ song, update, player, selection, numeralKey, ...actions }: Props & { numeralKey: string | null }) {
   const { position, settings, section } = player;
   const drag = useHitDrag(actions.onMoveHit);
   // After a keyboard move, focus follows the moved bar's handle.
@@ -107,6 +111,7 @@ function ChordView({ song, update, player, selection, ...actions }: Props) {
             drag={drag}
             reorder={{ count: song.bars.length, move: moveBar, begin: barDrag.begin, view: barDrag.view, focus: focusBar === bar.id }}
             selection={selection}
+            numeralKey={numeralKey}
             previous={lastHit(song.bars[i - 1])}
             marks={barMarks(i, position?.bar, settings.range, section.anchor)}
             onPick={section.picking ? () => section.pickBar(i) : undefined}
@@ -142,28 +147,46 @@ const barMarks = (i: number, currentBar: number | undefined, range: BarRange | n
 
 const markClasses = (m: BarMarks) => ['bar', m.current ? 'is-current' : '', m.inRange ? 'in-range' : '', m.anchor ? 'is-anchor' : ''].join(' ');
 
-function KeyRow({ song, update }: { song: Song; update: Update }) {
-  const suggestion = suggestedKey(song);
-  const showSuggestion = suggestion && suggestion.name !== song.key;
+function KeyRow({ song, update, numerals, onNumerals }: { song: Song; update: Update; numerals: boolean; onNumerals: () => void }) {
   return (
     <div className="key-row">
       <KeySelect value={song.key ?? ''} onChange={(k) => update((s) => ({ ...s, key: k || null }))} />
-      {showSuggestion && (
-        <div className="key-suggestion" role="status">
-          <span>
-            Sounds like <strong>{suggestion.tonic} {suggestion.mode}</strong>
-          </span>
-          <button
-            type="button"
-            className="pill-btn"
-            aria-label={`Use key ${suggestion.tonic} ${suggestion.mode}`}
-            onClick={() => update((s) => ({ ...s, key: suggestion.name }))}
-          >
-            Use
-          </button>
-        </div>
-      )}
+      <RelativeKey songKey={song.key} onSwitch={(key) => update((s) => ({ ...s, key }))} />
+      <button type="button" className="chip-toggle numerals-toggle" aria-pressed={numerals} disabled={!song.key} onClick={onNumerals}>
+        Numerals
+      </button>
+      <KeySuggestion song={song} onUse={(key) => update((s) => ({ ...s, key }))} />
     </div>
+  );
+}
+
+/** "Sounds like G major · 86% sure · or E minor", with a button to use it. */
+function KeySuggestion({ song, onUse }: { song: Song; onUse: (key: string) => void }) {
+  const suggestion = suggestedKey(song);
+  if (!suggestion || suggestion.name === song.key) return null;
+  const runnerUp = suggestKeys(chordSymbols(song))[1];
+  return (
+    <div className="key-suggestion" role="status">
+      <span>
+        Sounds like <strong>{suggestion.tonic} {suggestion.mode}</strong>
+        <span className="key-sure"> · {Math.round(suggestion.confidence * 100)}% sure</span>
+        {runnerUp && <span className="key-sure"> · or {runnerUp.tonic} {runnerUp.mode}</span>}
+      </span>
+      <button type="button" className="pill-btn" aria-label={`Use key ${suggestion.tonic} ${suggestion.mode}`} onClick={() => onUse(suggestion.name)}>
+        Use
+      </button>
+    </div>
+  );
+}
+
+/** One tap from a major key to its relative minor (G <-> Em) and back. */
+function RelativeKey({ songKey, onSwitch }: { songKey: string | null; onSwitch: (key: string) => void }) {
+  const rel = songKey ? relativeKey(songKey) : null;
+  if (!rel) return null;
+  return (
+    <button type="button" className="chip-toggle" aria-label={`Relative key: ${describeKey(rel)}`} onClick={() => onSwitch(rel)}>
+      ⇄ {describeKey(rel)}
+    </button>
   );
 }
 
@@ -267,6 +290,8 @@ interface BarProps {
   drag: Drag;
   reorder: Reorder;
   selection: BarSelection;
+  /** Show Roman numerals relative to this key (null = off). */
+  numeralKey: string | null;
   /** Last hit of the previous bar, to know whether this bar's first chord is a change. */
   previous?: ChordHit;
   marks: BarMarks;
@@ -438,7 +463,7 @@ function SelectBox({ selection, id, n }: { selection: BarSelection; id: string; 
   );
 }
 
-function BarCard({ bar, index, update, actions, drag, reorder, selection, previous, marks, onPick }: BarProps) {
+function BarCard({ bar, index, update, actions, drag, reorder, selection, numeralKey, previous, marks, onPick }: BarProps) {
   const n = index + 1;
   const ref = useFollow(marks.current);
   const openMenu = () => actions.onBarMenu(index);
@@ -469,7 +494,7 @@ function BarCard({ bar, index, update, actions, drag, reorder, selection, previo
           ⋯
         </button>
       </header>
-      <Lane events={bar.events} previous={previous} actions={actions} drag={drag} />
+      <Lane events={bar.events} previous={previous} actions={actions} drag={drag} numeralKey={numeralKey} />
       <input
         className="bar-lyrics"
         aria-label={`Lyrics for bar ${n}`}
@@ -490,9 +515,10 @@ interface LaneProps {
   previous?: ChordHit;
   actions: SongScreenActions;
   drag: Drag;
+  numeralKey: string | null;
 }
 
-function Lane({ events, previous, actions, drag }: LaneProps) {
+function Lane({ events, previous, actions, drag, numeralKey }: LaneProps) {
   /** A click that ends a drag is not a tap. */
   const tap = (fn: () => void) => () => {
     if (!drag.consumeClick()) fn();
@@ -509,6 +535,7 @@ function Lane({ events, previous, actions, drag }: LaneProps) {
             hit={e}
             isChange={!before || voicingKey(before) !== voicingKey(e)}
             barStart={events.findIndex((x) => x.kind === 'chord') === i}
+            numeral={numeralKey ? romanNumeral(e.symbol, numeralKey) : null}
             dnd={dnd}
             onTap={tap(() => actions.onHitTap(e.id))}
             onPointerDown={(ev) => drag.onSlotPointerDown(ev, e.id, e.symbol)}
@@ -552,12 +579,13 @@ interface HitSlotProps {
   isChange: boolean;
   /** First chord of the bar: always named, so a bar never looks empty. */
   barStart: boolean;
+  numeral: string | null;
   dnd: Dnd;
   onTap: () => void;
   onPointerDown: (e: PointerEvent) => void;
 }
 
-function HitSlot({ hit, isChange, barStart, dnd, onTap, onPointerDown }: HitSlotProps) {
+function HitSlot({ hit, isChange, barStart, numeral, dnd, onTap, onPointerDown }: HitSlotProps) {
   return (
     <button
       type="button"
@@ -570,7 +598,7 @@ function HitSlot({ hit, isChange, barStart, dnd, onTap, onPointerDown }: HitSlot
       style={{ flexGrow: hit.units }}
       onClick={onTap}
     >
-      {(isChange || barStart) && <ChordSymbol symbol={hit.symbol} inline />}
+      <SlotName hit={hit} named={isChange || barStart} numeral={numeral} />
       {isChange && hit.units >= QUARTER && <ChordThumb shape={hit.shape} />}
       <span className="hit-arrow" aria-hidden="true">
         {ARROWS[`${hit.style}-${hit.direction}`]}
@@ -580,6 +608,24 @@ function HitSlot({ hit, isChange, barStart, dnd, onTap, onPointerDown }: HitSlot
       </span>
     </button>
   );
+}
+
+function SlotName({ hit, named, numeral }: { hit: ChordHit; named: boolean; numeral: string | null }) {
+  if (!named) return null;
+  return (
+    <>
+      <ChordSymbol symbol={hit.symbol} inline />
+      <Numeral value={numeral} />
+    </>
+  );
+}
+
+function Numeral({ value }: { value: string | null | false }) {
+  return value ? (
+    <span className="numeral" data-testid="numeral">
+      {value}
+    </span>
+  ) : null;
 }
 
 function RestSlot({ id, units, dnd, onTap }: { id: string; units: number; dnd: Dnd; onTap: () => void }) {

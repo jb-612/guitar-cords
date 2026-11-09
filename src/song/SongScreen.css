@@ -550,3 +550,21 @@
   font-weight: 600;
   font-size: 14px;
 }
+
+.numeral {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rosewood);
+  letter-spacing: 0.02em;
+  animation: fade-in var(--t-med) var(--ease-out);
+}
+
+.key-sure {
+  color: var(--ink-soft);
+  font-weight: 400;
+}
+
+.key-row {
+  flex-wrap: wrap;
+}
