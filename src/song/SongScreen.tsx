@@ -15,6 +15,8 @@ import type { Player } from '../player/usePlayer';
 import { ViewSwitch } from '../player/ViewSwitch';
 import { COMMON_TIME_SIGNATURES, formatTimeSignature, lengthName, shortLength, unitsOf } from './rhythm';
 import { useBarDrag, type BarDragView } from './useBarDrag';
+import { describeKey } from './TransposeSheet';
+import { MAX_CAPO, soundingKey, withCapo } from './transposeSong';
 import { useHitDrag, type DragView } from './useHitDrag';
 import { setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
 import './SongScreen.css';
@@ -31,6 +33,7 @@ export interface SongScreenActions {
   onMoveHit: (fromId: string, toId: string, copy: boolean) => void;
   /** Reorder: bar `from` goes to position `to`. */
   onMoveBar: (from: number, to: number) => void;
+  onTranspose: () => void;
 }
 
 type Drag = ReturnType<typeof useHitDrag>;
@@ -56,6 +59,7 @@ export function SongScreen(props: Props) {
       <div className="song-settings">
         <KeyRow song={song} update={update} />
         <MeterRow song={song} update={update} />
+        <CapoRow song={song} update={update} onTranspose={props.onTranspose} />
       </div>
       <ViewSwitch value={view} onChange={player.setView} />
       {view === 'chords' && <ChordView {...props} />}
@@ -191,6 +195,30 @@ function MeterRow({ song, update }: { song: Song; update: Update }) {
           }}
         />
       </label>
+    </div>
+  );
+}
+
+const CAPO_FRETS = Array.from({ length: MAX_CAPO + 1 }, (_, i) => i);
+
+/** Capo fret (changes the pitch, not the shapes) and the Transpose & key sheet. */
+function CapoRow({ song, update, onTranspose }: { song: Song; update: Update; onTranspose: () => void }) {
+  return (
+    <div className="capo-row">
+      <label className="mini-field">
+        <span className="section-label">Capo</span>
+        <select aria-label="Capo" value={String(song.capo ?? 0)} onChange={(e) => update((s) => withCapo(s, Number(e.target.value)))}>
+          {CAPO_FRETS.map((f) => (
+            <option key={f} value={f}>
+              {f === 0 ? 'None' : f}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="new-song-btn transpose-btn" onClick={onTranspose}>
+        Transpose
+      </button>
+      {song.capo && song.key ? <span className="sounds-in">sounds in {describeKey(soundingKey(song))}</span> : null}
     </div>
   );
 }

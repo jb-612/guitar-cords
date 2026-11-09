@@ -154,3 +154,34 @@
   font-size: 13px;
   color: var(--ink-soft);
 }
+
+.transpose-now {
+  margin: 0 16px 4px;
+  color: var(--ink-soft);
+}
+
+.transpose-preview {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.transpose-preview .from {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.mini-field.wide select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.transpose .chip-row .name-chip {
+  font-weight: 600;
+}

@@ -11,6 +11,7 @@ import { HitSheet } from './song/HitSheet';
 import { barUnits } from './song/rhythm';
 import { SongScreen } from './song/SongScreen';
 import { SongSetup } from './song/SongSetup';
+import { TransposeSheet } from './song/TransposeSheet';
 import {
   addChord,
   barTimeSignature,
@@ -47,7 +48,8 @@ type Overlay =
   | { kind: 'hit'; id: string }
   | { kind: 'bar'; index: number }
   | { kind: 'setup' }
-  | { kind: 'library' };
+  | { kind: 'library' }
+  | { kind: 'transpose' };
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
@@ -114,6 +116,7 @@ export function App() {
         onBarMenu={(index) => setOverlay({ kind: 'bar', index })}
         onMoveHit={(from, to, copy) => setSong((s) => moveHit(s, from, to, { copy }))}
         onMoveBar={(from, to) => setSong((s) => moveBar(s, from, to))}
+        onTranspose={() => setOverlay({ kind: 'transpose' })}
       />
       <Transport song={song} player={player} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} />
@@ -142,6 +145,11 @@ const OVERLAYS: OverlayRenderers = {
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
   library: (p) => <LibraryOverlay {...p} />,
+  transpose: (p) => (
+    <Sheet label="Transpose & key" onClose={p.close}>
+      <TransposeSheet song={p.song} onApply={(next) => p.apply(() => next)} onClose={p.close} />
+    </Sheet>
+  ),
 };
 
 function OverlayView(props: OverlayProps) {

@@ -97,6 +97,17 @@ function barLyrics(bar: Bar): string[] {
   return strums === 0 ? [] : [lyricToken(bar.lyrics), ...Array.from({ length: strums - 1 }, () => '+')];
 }
 
+/** Score and guitar-track metadata. */
+const header = (song: Song) => [
+  `\\title ${quoted(song.title)}`,
+  `\\tempo ${song.tempo}`,
+  '.',
+  '\\track "Guitar"',
+  '\\staff {score tabs}',
+  '\\instrument acousticguitarsteel',
+  ...(song.capo ? [`\\capo ${song.capo}`] : []),
+];
+
 export interface ExportOptions {
   /** Add a drum track in this style (it can be muted live in the player). */
   drums?: DrumStyle;
@@ -108,12 +119,7 @@ export function songToAlphaTex(song: Song, options: ExportOptions = {}): string 
   const body = song.bars.length ? song.bars.map((b) => barTex(b, writer)).join(' |\n') : 'r.1';
   const lyrics = song.bars.flatMap(barLyrics).join(' ');
   return [
-    `\\title ${quoted(song.title)}`,
-    `\\tempo ${song.tempo}`,
-    '.',
-    '\\track "Guitar"',
-    '\\staff {score tabs}',
-    '\\instrument acousticguitarsteel',
+    ...header(song),
     ...[...names.values()].map(({ name, shape }) => `\\chord ${quoted(name)} ${diagramFrets(shape)}`),
     ...(lyrics ? [`\\lyrics ${quoted(lyrics)}`] : []),
     `\\ts ${song.timeSignature.beats} ${song.timeSignature.unit}`,

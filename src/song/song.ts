@@ -54,6 +54,8 @@ export interface Song {
   bars: Bar[];
   /** Last change, ms since epoch (library ordering and sync). */
   updatedAt?: number;
+  /** Capo fret (0 = none). Shapes and names are as played; the song sounds this many semitones higher. */
+  capo?: number;
 }
 
 export interface ChordChoice {
