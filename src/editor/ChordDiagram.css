@@ -111,7 +111,7 @@ circle.inlay {
   }
 }
 
-.is-dragging .cell:hover .cell-ghost {
+.is-move .cell:hover .cell-ghost {
   opacity: 0.2;
   fill: var(--brass);
 }
@@ -179,6 +179,49 @@ circle.inlay {
 
 .drag-ghost .dot-fill {
   fill: var(--brass-strong);
+}
+
+/* Hold feedback: the ring fills while pressing, then pulses in stretch mode. */
+.dot.is-pressing .dot-ring {
+  opacity: 1;
+  animation: hold-fill 380ms linear forwards;
+}
+
+.dot.is-stretching .dot-ring {
+  opacity: 1;
+  transform: scale(1.1);
+  animation: stretch-pulse 900ms var(--ease-out) infinite;
+}
+
+.dot.is-stretching .dot-fill {
+  fill: var(--brass-strong);
+}
+
+.is-stretch {
+  cursor: ew-resize;
+}
+
+.is-stretch .barre {
+  fill: var(--brass-strong);
+  opacity: 0.85;
+}
+
+@keyframes hold-fill {
+  from {
+    transform: scale(0.6);
+    opacity: 0.2;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes stretch-pulse {
+  50% {
+    transform: scale(1.25);
+    opacity: 0.4;
+  }
 }
 
 @keyframes pop {

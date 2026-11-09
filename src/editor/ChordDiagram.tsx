@@ -29,6 +29,8 @@ const KEY_ACTIONS: Record<string, EditorAction> = {
   '3': { type: 'finger', finger: 3 },
   '4': { type: 'finger', finger: 4 },
   t: { type: 'finger', finger: 0 },
+  'Shift+ArrowLeft': { type: 'extend', dir: -1 },
+  'Shift+ArrowRight': { type: 'extend', dir: 1 },
 };
 
 interface Props {
@@ -38,12 +40,12 @@ interface Props {
 
 export function ChordDiagram({ state, dispatch }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { drag, onDotPointerDown, onPointerMove, onPointerUp, consumeDragClick } = useDotDrag(svgRef, state.startFret, dispatch);
+  const { drag, onDotPointerDown, onPointerMove, onPointerUp, consumeDragClick } = useDotDrag({ svgRef, shape: state.shape, startFret: state.startFret, dispatch });
   const tap = (action: EditorAction) => {
     if (!consumeDragClick()) dispatch(action);
   };
   const onKeyDown = (e: KeyboardEvent) => {
-    const action = KEY_ACTIONS[e.key];
+    const action = KEY_ACTIONS[e.shiftKey ? `Shift+${e.key}` : e.key];
     if (!action) return;
     e.preventDefault();
     dispatch(action);
@@ -52,11 +54,12 @@ export function ChordDiagram({ state, dispatch }: Props) {
   return (
     <svg
       ref={svgRef}
-      className={`diagram${drag?.moved ? ' is-dragging' : ''}`}
+      className={`diagram${drag ? ` is-${drag.mode}` : ''}`}
       viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
       role="application"
-      aria-label="Chord diagram. Tap a cell to place a finger; arrow keys move the selected finger."
+      aria-label="Chord diagram. Tap a cell to place a finger; arrow keys move the selected finger; Shift plus left or right arrow stretches it into a barre."
       tabIndex={0}
+      onContextMenu={(e) => e.preventDefault()}
       onKeyDown={onKeyDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -72,7 +75,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
         onTap={(d) => tap({ type: 'cell', string: d.string, fret: d.fret })}
         onPointerDown={onDotPointerDown}
       />
-      {drag?.moved && <DragGhost drag={drag} shape={state.shape} />}
+      {drag?.mode === 'move' && <DragGhost drag={drag} shape={state.shape} />}
     </svg>
   );
 }
@@ -184,7 +187,7 @@ function Barres({ shape, startFret }: { shape: ChordShape; startFret: number }) 
         const x1 = stringX(Math.min(...strings));
         const x2 = stringX(Math.max(...strings));
         const y = cellCenterY(g[0]!.fret - startFret + 1);
-        return <rect key={`${g[0]!.finger}@${g[0]!.fret}`} className="barre" x={x1 - G.dotRadius} y={y - G.dotRadius * 0.62} width={x2 - x1 + G.dotRadius * 2} height={G.dotRadius * 1.24} rx={G.dotRadius * 0.62} />;
+        return <rect key={`${g[0]!.finger}@${g[0]!.fret}`} data-testid={`barre-${g[0]!.finger}@${g[0]!.fret}`} className="barre" x={x1 - G.dotRadius} y={y - G.dotRadius * 0.62} width={x2 - x1 + G.dotRadius * 2} height={G.dotRadius * 1.24} rx={G.dotRadius * 0.62} />;
       })}
     </g>
   );
@@ -194,14 +197,18 @@ interface DotsProps {
   state: EditorState;
   drag: DragState | null;
   onTap: (d: FretDot) => void;
-  onPointerDown: (e: PointerEvent, string: number) => void;
+  onPointerDown: (e: PointerEvent, dot: FretDot) => void;
 }
+
+const dragging = (drag: DragState | null, string: number, mode: DragState['mode']) => drag?.mode === mode && drag.from === string;
 
 function dotClasses(d: FretDot, selected: number | null, drag: DragState | null): string[] {
   const flags: [string, boolean][] = [
     ['is-thumb', d.finger === 0],
     ['is-selected', selected === d.string],
-    ['is-lifted', !!drag?.moved && drag.from === d.string],
+    ['is-lifted', dragging(drag, d.string, 'move')],
+    ['is-pressing', dragging(drag, d.string, 'pressing')],
+    ['is-stretching', dragging(drag, d.string, 'stretch')],
   ];
   return ['dot', ...flags.filter(([, on]) => on).map(([name]) => name)];
 }
@@ -219,7 +226,7 @@ function Dots({ state, drag, onTap, onPointerDown }: DotsProps) {
             className={classes.join(' ')}
             style={{ transform: `translate(${stringX(d.string)}px, ${cellCenterY(d.fret - state.startFret + 1)}px)` }}
             onClick={() => onTap(d)}
-            onPointerDown={(e) => onPointerDown(e, d.string)}
+            onPointerDown={(e) => onPointerDown(e, d)}
           >
             <g className="dot-body">
               <circle className="dot-ring" r={G.dotRadius + 5} />

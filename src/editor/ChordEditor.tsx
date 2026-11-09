@@ -79,7 +79,7 @@ export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, i
         <Alternatives candidates={candidates} current={shownCurrent} onPick={names.pick} />
         <KeySelect value={songKey} onChange={setSongKey} />
         <EditorActions canClear={!blank} canSave={!blank && displayName !== ''} onCancel={onCancel} onClear={() => dispatch({ type: 'clear' })} onSave={save} />
-        <p className="editor-help">Tap a cell to place a finger · drag to move it · tap a selected finger to remove it · tap above the nut for open ○ / muted ×</p>
+        <p className="editor-help">Tap a cell to place a finger · drag to move it · hold a finger, then drag across strings for a barre · tap a selected finger to remove it · tap above the nut for open ○ / muted ×</p>
       </div>
     </section>
   );

@@ -79,6 +79,20 @@ describe('editorReducer', () => {
     expect(s.selected).toBeNull();
   });
 
+  it('stretches a barre from a snapshot of the shape at the start of the hold', () => {
+    const placed = run([{ type: 'cell', string: 0, fret: 1 }]);
+    const base = placed.shape;
+    const wide = editorReducer(placed, { type: 'barre', base, anchor: 0, to: 5 });
+    const back = editorReducer(wide, { type: 'barre', base, anchor: 0, to: 2 });
+    expect(back.shape.dots.map((d) => d.string)).toEqual([0, 1, 2]);
+    expect(back.selected).toBe(0);
+  });
+
+  it('extends the selected finger into a barre one string at a time', () => {
+    const s = run([{ type: 'cell', string: 1, fret: 3 }, { type: 'extend', dir: 1 }, { type: 'extend', dir: 1 }]);
+    expect(s.shape.dots.filter((d) => d.finger === 1).map((d) => d.string).sort()).toEqual([1, 2, 3]);
+  });
+
   it('clears everything', () => {
     const s = run([{ type: 'cell', string: 0, fret: 3 }, { type: 'window', delta: 2 }, { type: 'clear' }]);
     expect(s).toEqual(initialEditorState);

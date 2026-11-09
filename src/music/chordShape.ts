@@ -42,11 +42,16 @@ function nextFinger(shape: ChordShape, fret: number): Finger {
   return shape.dots.find((d) => d.fret === fret)?.finger ?? 4;
 }
 
+const partOfBarre = (shape: ChordShape, dot: FretDot) =>
+  shape.dots.some((d) => d.string !== dot.string && d.finger === dot.finger && d.fret === dot.fret);
+
 /** Tap on a string at a fret: add a dot, move this string's dot there, or remove it if tapped again. */
 export function tapString(shape: ChordShape, string: number, fret: number): ChordShape {
   const existing = dotOn(shape, string);
   if (existing?.fret === fret) return { ...shape, dots: withoutString(shape, string) };
-  const finger = existing?.finger ?? nextFinger(shape, fret);
+  // A string under a barre keeps the barre; the tap places a new finger above it.
+  const keepsFinger = existing && !partOfBarre(shape, existing);
+  const finger = keepsFinger ? existing.finger : nextFinger(shape, fret);
   return {
     dots: [...withoutString(shape, string), { string, fret, finger }],
     muted: unmute(shape.muted, string),
@@ -72,6 +77,40 @@ export function moveDot(shape: ChordShape, fromString: number, to: { string: num
 
 export function removeDot(shape: ChordShape, string: number): ChordShape {
   return { ...shape, dots: withoutString(shape, string) };
+}
+
+const sameBarre = (d: FretDot, ref: FretDot) => d.finger === ref.finger && d.fret === ref.fret;
+const barreStrings = (shape: ChordShape, ref: FretDot) => shape.dots.filter((d) => sameBarre(d, ref)).map((d) => d.string);
+const farthestFrom = (strings: number[], from: number) =>
+  strings.reduce((best, s) => (Math.abs(s - from) > Math.abs(best - from) ? s : best), from);
+const span = (lo: number, hi: number) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+
+/**
+ * Stretch the finger on `anchor` into a barre reaching string `to`, at the anchor's fret.
+ * The far end of any existing barre stays fixed, so dragging an end grows or shrinks it.
+ * Strings in range fretted higher keep their own finger (like the F shape); lower or
+ * same-fret dots and mutes are replaced by the barre.
+ */
+export function barreTo(shape: ChordShape, anchor: number, to: number): ChordShape {
+  const ref = dotOn(shape, anchor);
+  if (!ref || to < 0 || to >= STRING_COUNT) return shape;
+  const fixed = farthestFrom(barreStrings(shape, ref), anchor);
+  const [lo, hi] = [Math.min(fixed, to), Math.max(fixed, to)];
+  const inRange = (s: number) => s >= lo && s <= hi;
+  const kept = shape.dots.filter((d) => (inRange(d.string) ? d.fret > ref.fret : !sameBarre(d, ref)));
+  const added = span(lo, hi)
+    .filter((s) => !kept.some((d) => d.string === s))
+    .map((s) => ({ string: s, fret: ref.fret, finger: ref.finger }));
+  return { dots: [...kept, ...added].sort((a, b) => a.string - b.string), muted: shape.muted.filter((s) => !inRange(s)) };
+}
+
+/** Grow the barre that `string` belongs to by one string in direction `dir` (+1 toward high E). */
+export function extendBarre(shape: ChordShape, string: number, dir: 1 | -1): ChordShape {
+  const ref = dotOn(shape, string);
+  if (!ref) return shape;
+  const members = barreStrings(shape, ref);
+  const edge = dir > 0 ? Math.max(...members) : Math.min(...members);
+  return barreTo(shape, edge, edge + dir);
 }
 
 /** Toggle a string between muted and open. Muting a fretted string removes its dot. */

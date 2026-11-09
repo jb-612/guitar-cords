@@ -85,6 +85,21 @@ describe('ChordEditor', () => {
     expect(screen.getByTestId('dot-2')).toBeInTheDocument();
   });
 
+  it('stretches the selected finger into a barre with Shift+Arrow', async () => {
+    const user = userEvent.setup();
+    render(<ChordEditor />);
+    await user.click(cell(6, 1));
+    const board = screen.getByRole('application');
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(board, { key: 'ArrowRight', shiftKey: true });
+    for (let s = 0; s < 6; s++) expect(screen.getByTestId(`dot-${s}`).textContent).toBe('1');
+    expect(screen.getByTestId('barre-1@1')).toBeInTheDocument();
+  });
+
+  it('teaches the barre gesture in the help text', () => {
+    render(<ChordEditor />);
+    expect(screen.getByText(/hold a finger, then drag across strings for a barre/i)).toBeInTheDocument();
+  });
+
   it('respells the name for the chosen song key', async () => {
     const user = userEvent.setup();
     render(<ChordEditor />);

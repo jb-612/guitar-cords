@@ -6,6 +6,8 @@ import {
   EMPTY_SHAPE,
   VISIBLE_FRETS,
   moveDot,
+  barreTo,
+  extendBarre,
   removeDot,
   setFinger,
   tapString,
@@ -33,6 +35,9 @@ export type EditorAction =
   | { type: 'nudge'; dString: number; dFret: number }
   | { type: 'drop'; from: number; string: number; fret: number }
   | { type: 'window'; delta: number }
+  /** Live barre stretch: always computed from `base`, the shape when the hold began. */
+  | { type: 'barre'; base: ChordShape; anchor: number; to: number }
+  | { type: 'extend'; dir: 1 | -1 }
   | { type: 'select'; string: number | null }
   | { type: 'load'; shape: ChordShape }
   | { type: 'clear' };
@@ -80,6 +85,8 @@ const handlers: Handlers = {
   nudge: (s, a) => onNudge(s, a.dString, a.dFret),
   drop: (s, a) => onMove(s, a.from, a),
   window: (s, a) => ({ ...s, startFret: clampStart(s.startFret + a.delta) }),
+  barre: (s, a) => ({ ...s, shape: barreTo(a.base, a.anchor, a.to), selected: a.anchor }),
+  extend: (s, a) => (s.selected === null ? s : { ...s, shape: extendBarre(s.shape, s.selected, a.dir) }),
   select: (s, a) => ({ ...s, selected: a.string }),
   load: (_, a) => ({ shape: a.shape, startFret: viewStartFret(a.shape), selected: null }),
   clear: () => initialEditorState,

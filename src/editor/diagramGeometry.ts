@@ -40,3 +40,6 @@ function rowHit(string: number, row: number, y: number, startFret: number): Cell
   if (row > 0) return { string, fret: startFret + row - 1 };
   return y >= G.top - G.nutZone ? { string, nut: true } : null;
 }
+
+/** Closest string to an x position, clamped to the board (for barre stretching, which ignores y). */
+export const nearestString = (x: number) => Math.min(STRING_COUNT - 1, Math.max(0, Math.round((x - G.left) / G.stringGap)));

@@ -4,6 +4,10 @@ import {
   setFinger,
   moveDot,
   removeDot,
+  barreTo,
+  extendBarre,
+  shapeFromFrets,
+  toFretString,
   toggleMute,
   shiftShape,
   soundingMidi,
@@ -79,6 +83,71 @@ describe('removeDot', () => {
     const s = removeDot(tapAll([[1, 3], [2, 2]]), 1);
     expect(s.dots).toEqual([{ string: 2, fret: 2, finger: 2 }]);
     expect(s.muted).toEqual([]);
+  });
+});
+
+describe('barreTo', () => {
+  const single = tapAll([[0, 1]]); // finger 1 on low E, fret 1
+
+  it('stretches one finger across strings at its fret', () => {
+    const s = barreTo(single, 0, 5);
+    expect(s.dots).toHaveLength(6);
+    expect(s.dots.every((d) => d.fret === 1 && d.finger === 1)).toBe(true);
+  });
+
+  it('keeps fingers placed higher up on the strings it covers (F shape)', () => {
+    const f = tapAll([[0, 1], [3, 2], [1, 3], [2, 3]]); // 1 on E1, 2 on G2, 3 on A3, 4 on D3
+    expect(toFretString(barreTo(f, 0, 5))).toBe('133211');
+    expect(barreTo(f, 0, 5).dots.find((d) => d.string === 3)?.finger).toBe(2);
+  });
+
+  it('shrinks from the grabbed end, keeping the other end fixed', () => {
+    const full = barreTo(single, 0, 5);
+    const s = barreTo(full, 5, 3);
+    expect(toFretString(s)).toBe('111100');
+  });
+
+  it('joins muted strings into the barre and unmutes them', () => {
+    const s = barreTo(toggleMute(single, 4), 0, 5);
+    expect(s.muted).toEqual([]);
+    expect(toFretString(s)).toBe('111111');
+  });
+
+  it('replaces a lower fret or a different finger at the same fret', () => {
+    const base = tapAll([[2, 3], [3, 1], [4, 3]]); // finger 1 on D3, finger 2 on G1, finger 3 on B3
+    const s = barreTo(base, 2, 4);
+    expect(toFretString(s)).toBe('003330');
+    expect(s.dots.filter((d) => d.fret === 3).every((d) => d.finger === 1)).toBe(true);
+  });
+
+  it('is unchanged when there is no dot on the anchor string', () => {
+    expect(barreTo(single, 3, 5)).toBe(single);
+  });
+});
+
+describe('tapString over a barre', () => {
+  it('adds a new finger above the barre instead of moving the barre (building an F)', () => {
+    const barre = barreTo(tapAll([[0, 1]]), 0, 5);
+    const f = [[3, 2], [1, 3], [2, 3]].reduce((s, [str, fret]) => tapString(s, str!, fret!), barre);
+    expect(toFretString(f)).toBe('133211');
+    expect(f.dots.find((d) => d.string === 3)?.finger).toBe(2);
+    expect(f.dots.find((d) => d.string === 1)?.finger).toBe(3);
+    expect(f.dots.find((d) => d.string === 2)?.finger).toBe(4);
+  });
+});
+
+describe('extendBarre', () => {
+  it('grows a barre one string at a time in the given direction', () => {
+    const one = tapAll([[1, 3]]);
+    const two = extendBarre(one, 1, 1);
+    expect(toFretString(two)).toBe('033000');
+    expect(toFretString(extendBarre(two, 1, 1))).toBe('033300');
+    expect(toFretString(extendBarre(two, 2, -1))).toBe('333000');
+  });
+
+  it('stops at the edge of the fretboard', () => {
+    const edge = shapeFromFrets('xxxxx1');
+    expect(extendBarre(edge, 5, 1)).toBe(edge);
   });
 });
 

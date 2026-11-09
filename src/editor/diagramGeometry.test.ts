@@ -1,4 +1,4 @@
-import { G, pointToCell, stringX, fretY } from './diagramGeometry';
+import { G, nearestString, pointToCell, stringX, fretY } from './diagramGeometry';
 
 describe('pointToCell', () => {
   it('maps the middle of a fret cell to that string and absolute fret', () => {
@@ -16,5 +16,13 @@ describe('pointToCell', () => {
   it('returns null outside the board', () => {
     expect(pointToCell({ x: stringX(5) + G.stringGap, y: fretY(1) }, 1)).toBeNull();
     expect(pointToCell({ x: stringX(0), y: fretY(5) + 30 }, 1)).toBeNull();
+  });
+});
+
+describe('nearestString', () => {
+  it('snaps an x position to the closest string, clamped to the board', () => {
+    expect(nearestString(stringX(2) + 5)).toBe(2);
+    expect(nearestString(-100)).toBe(0);
+    expect(nearestString(9999)).toBe(5);
   });
 });
