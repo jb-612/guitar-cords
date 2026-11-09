@@ -3,12 +3,14 @@ import navigation from './navigation.cjs';
 
 const { createPolicy, chromeUserAgent } = navigation;
 
-const policy = createPolicy({ scheme: 'app', devUrl: 'http://localhost:5317' });
+const policy = createPolicy({ appUrl: 'http://localhost:47317' });
 
 describe('desktop navigation policy', () => {
   it('keeps the app window on the app', () => {
-    expect(policy.canNavigate('app://guitar-cords/index.html', false)).toBe(true);
-    expect(policy.canNavigate('http://localhost:5317/', false)).toBe(true);
+    expect(policy.canNavigate('http://localhost:47317/', false)).toBe(true);
+    expect(policy.canNavigate('http://localhost:47317/index.html', false)).toBe(true);
+    expect(policy.canNavigate('http://localhost:47318/', false)).toBe(false);
+    expect(policy.canNavigate('http://localhost:473170/', false)).toBe(false);
     expect(policy.canNavigate('https://accounts.google.com/signin', false)).toBe(false);
     expect(policy.canNavigate('https://example.com/', false)).toBe(false);
   });

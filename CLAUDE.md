@@ -17,7 +17,7 @@ npx vitest run -t "names x32010"               # tests matching a name
 npm run typecheck
 npm run lint           # ESLint, zero warnings allowed; the `complexity` rule caps functions at 5
 npm run dist           # build desktop installers for this OS into release/ (dist:mac / dist:win / dist:linux)
-npm run selftest:packaged  # launch the packaged app: plays a song over app://, renders tab, checks CSP — PASS/FAIL
+npm run selftest:packaged  # launch the packaged app: plays a song from its local server, renders tab, checks CSP — PASS/FAIL
 npm run test:mobile    # with the dev server running: iPhone + Pixel emulation touch checks (scroll vs drag, long-press, barre)
 ```
 
@@ -54,7 +54,7 @@ npm run test:mobile    # with the dev server running: iPhone + Pixel emulation t
 
 ## Delivery
 
-- **Desktop**: electron-builder (config in `package.json` → `build`). The packaged app serves `dist/` over a private `app://` protocol (`electron/main.cjs`), because alphaTab's worker, audio worklet and SoundFont don't load from `file://`. That protocol also sends the CSP. The renderer is sandboxed, navigation is locked, and only Firebase auth popups may open inside the app. `GC_SELFTEST=1` runs `electron/selftest.cjs`.
+- **Desktop**: electron-builder (config in `package.json` → `build`). The packaged app serves `dist/` from a loopback server at `http://localhost:47317` (`electron/server.cjs`), because alphaTab's worker, audio worklet and SoundFont don't load from `file://`, and Firebase's Google sign-in only runs on web origins (`localhost` is authorized by default). The port is fixed because saved songs are stored per origin. The server sends the CSP. The renderer is sandboxed and navigation is locked to the app (`electron/navigation.cjs`); only Firebase sign-in popups open inside the app, and they may move between the Firebase handler and Google's sign-in pages, with a Chrome user agent (Google refuses embedded browsers). `GC_SELFTEST=1` runs `electron/selftest.cjs` in a throwaway data folder.
 - **Web/PWA**: vite-plugin-pwa (manifest, offline precache including the SoundFont). The service worker registers only over http(s) (`src/pwa.ts`). The web build gets the CSP as a meta tag (`vite.config.ts`). GitHub Pages deploys via `.github/workflows/pages.yml`.
 - **CI**: `ci.yml` (lint, typecheck, test, build). `release.yml` builds and self-tests macOS, Windows and Linux apps on `v*` tags.
 - **Touch**: emulated CDP touches drift inside scrolled sheets, so `scripts/mobile-check.cjs` uses real touches only for scrolling and touch-type PointerEvents for precise gestures. On phones, the hit drag needs a short hold, the bar long-press ignores chords and controls, and the scroll blocker is registered up front, because browsers decide whether a touch may scroll at touchstart.

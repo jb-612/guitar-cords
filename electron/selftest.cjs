@@ -1,5 +1,5 @@
 /**
- * Packaged-app smoke test (GC_SELFTEST=1): checks that the app loads over app://,
+ * Packaged-app smoke test (GC_SELFTEST=1): checks that the app loads from its local server,
  * that alphaTab's SoundFont, fonts and worker load (playback advances through bars,
  * the tab view renders), and that no CSP or load errors were reported. Exits 0/1.
  */

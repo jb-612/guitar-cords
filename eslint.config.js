@@ -14,5 +14,5 @@ export default tseslint.config(
     rules: { ...reactHooks.configs.recommended.rules, complexity: ['warn', 5] },
   },
   { files: ['electron/**/*.cjs', 'scripts/**/*.cjs'], languageOptions: { globals: globals.node, sourceType: 'commonjs' }, rules: { '@typescript-eslint/no-require-imports': 'off' } },
-  { files: ['scripts/**/*.mjs'], languageOptions: { globals: globals.node } },
+  { files: ['scripts/**/*.mjs', 'electron/**/*.mjs'], languageOptions: { globals: globals.node } },
 );

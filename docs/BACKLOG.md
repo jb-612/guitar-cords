@@ -29,7 +29,7 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 ## P2 — done ✅
 
 - ✅ **Desktop apps**: macOS built and self-tested here (plays a song, renders tab, no CSP errors); Linux AppImage and Windows zip cross-built here; `release.yml` builds and self-tests all three on tag. Code signing/notarisation still needs your certificates.
-- ✅ **Electron security**: app:// protocol, CSP, sandbox, navigation lock.
+- ✅ **Electron security**: local loopback server, CSP, sandbox, navigation lock; Google sign-in works in the packaged app.
 - ✅ **Installable web app (PWA)**: manifest, icons, offline cache, verified to reload offline; GitHub Pages deploy.
 - ◐ **Real phones**: emulated iPhone 15 and Pixel 8 with touch (`npm run test:mobile`), which found and fixed 3 touch bugs. **Not yet tried on physical devices.**
 - ✅ Count-in, volumes, guitar sound, strum presets, swing feel, drum fills/crash/ending, speed trainer.

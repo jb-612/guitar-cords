@@ -1,6 +1,6 @@
 /**
  * Where the desktop app's windows may go.
- * - The app window stays on the app (app:// or the dev server); other links open in the system browser.
+ * - The app window stays on the app (the dev server, or the packaged app's local server); other links open in the system browser.
  * - Firebase sign-in opens a popup inside the app, which must be free to move between the
  *   Firebase auth handler and Google's sign-in pages until it hands the result back.
  */
@@ -16,8 +16,15 @@ const httpsHostIn = (url, hosts) => {
   }
 };
 
-function createPolicy({ scheme, devUrl }) {
-  const isAppUrl = (url) => url.startsWith(`${scheme}://`) || Boolean(devUrl && url.startsWith(devUrl));
+/** `appUrl` is the app's origin: the Vite dev server, or the local server of the packaged app. */
+function createPolicy({ appUrl }) {
+  const isAppUrl = (url) => {
+    try {
+      return new URL(url).origin === new URL(appUrl).origin;
+    } catch {
+      return false;
+    }
+  };
   return {
     isAppUrl,
     canNavigate: (url, isSignInPopup) => isAppUrl(url) || (isSignInPopup && httpsHostIn(url, SIGN_IN_HOSTS)),
