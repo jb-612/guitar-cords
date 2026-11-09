@@ -4,21 +4,36 @@
  */
 import { ChordThumb } from '../components/ChordThumb';
 import { ChordSymbol } from '../editor/ChordSymbol';
-import type { Song, SongChord } from '../song/song';
+import type { ChordHit, Song, SongEvent } from '../song/song';
+import { voicingKey } from './alphaTex';
 import type { Position } from './usePlayer';
 
-/** The chord sounding at `beat` within its bar, plus the next chord in the song. */
-export function chordsAt(song: Song, position: Position): { current?: SongChord; next?: SongChord } {
-  const all = song.bars.flatMap((b, bar) => {
+interface Timed {
+  event: SongEvent;
+  bar: number;
+  start: number;
+}
+
+const timeline = (song: Song): Timed[] =>
+  song.bars.flatMap((b, bar) => {
     let start = 0;
-    return b.chords.map((c) => {
-      const entry = { chord: c, bar, start, end: start + c.beats };
-      start += c.beats;
-      return entry;
+    return b.events.map((event) => {
+      const t = { event, bar, start };
+      start += event.units;
+      return t;
     });
   });
-  const i = all.findIndex((e) => e.bar === position.bar && position.beat >= e.start && position.beat < e.end);
-  return { current: all[i]?.chord, next: i >= 0 ? all[i + 1]?.chord : undefined };
+
+const isHit = (e: SongEvent): e is ChordHit => e.kind === 'chord';
+
+/** The chord sounding at `position` (none during a rest) and the next different chord after it. */
+export function chordsAt(song: Song, position: Position): { current?: ChordHit; next?: ChordHit } {
+  const all = timeline(song);
+  const i = all.findIndex((t) => t.bar === position.bar && position.unit >= t.start && position.unit < t.start + t.event.units);
+  const current = all[i] && isHit(all[i].event) ? all[i].event : undefined;
+  const later = all.slice(i + 1).map((t) => t.event).filter(isHit);
+  const next = later.find((h) => !current || voicingKey(h) !== voicingKey(current));
+  return { current, next };
 }
 
 export function NowPlaying({ song, position, hideFingers }: { song: Song; position: Position; hideFingers: boolean }) {
@@ -35,7 +50,7 @@ export function NowPlaying({ song, position, hideFingers }: { song: Song; positi
   );
 }
 
-function CurrentChord({ chord, hideFingers }: { chord?: SongChord; hideFingers: boolean }) {
+function CurrentChord({ chord, hideFingers }: { chord?: ChordHit; hideFingers: boolean }) {
   return (
     <div className="now-main">
       <div className="now-chord" data-testid="now-chord" aria-label={chord?.symbol ?? ''}>
@@ -46,7 +61,7 @@ function CurrentChord({ chord, hideFingers }: { chord?: SongChord; hideFingers: 
   );
 }
 
-function Fingers({ chord }: { chord?: SongChord }) {
+function Fingers({ chord }: { chord?: ChordHit }) {
   if (!chord) return null;
   return (
     <div className="now-diagram" data-testid="now-diagram" key={chord.id}>
@@ -57,7 +72,7 @@ function Fingers({ chord }: { chord?: SongChord }) {
 
 const Lyrics = ({ text }: { text?: string }) => (text ? <p className="now-lyrics">{text}</p> : null);
 
-function NextChord({ chord }: { chord?: SongChord }) {
+function NextChord({ chord }: { chord?: ChordHit }) {
   if (!chord) return null;
   return (
     <p className="now-next">

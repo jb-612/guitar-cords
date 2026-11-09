@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ChordThumb } from '../components/ChordThumb';
 import { SheetHeader } from '../components/Sheet';
 import { toFretString } from '../music/chordShape';
+import { unitsOf } from './rhythm';
 import { parseChord } from '../music/chordSymbol';
 import { diatonicChords } from '../music/diatonic';
 import { VOICING_LIBRARY, suggestVoicings, type Voicing } from '../music/voicings';
@@ -17,7 +18,8 @@ interface Props {
   songKey: string | null;
   /** The creator's own fingerings, newest first. */
   myChords?: ChordChoice[];
-  onPick: (choice: ChordChoice) => void;
+  /** `units` is the chosen length; omitted means fill the available space. */
+  onPick: (choice: ChordChoice, units?: number) => void;
   onCreate: () => void;
   onClose: () => void;
 }
@@ -38,9 +40,20 @@ const withShapes = (symbols: string[]) =>
     return v ? [{ symbol, voicing: v }] : [];
   });
 
-export function ChordPicker({ songKey, myChords = [], onPick, onCreate, onClose }: Props) {
+const LENGTHS: [string, number | null][] = [
+  ['Fill', null],
+  ['Whole', unitsOf(1)],
+  ['Half', unitsOf(2)],
+  ['Quarter', unitsOf(4)],
+  ['Eighth', unitsOf(8)],
+  ['Sixteenth', unitsOf(16)],
+];
+
+export function ChordPicker({ songKey, myChords = [], onPick: pickChord, onCreate, onClose }: Props) {
   const [query, setQuery] = useState('');
+  const [length, setLength] = useState<number | null>(null);
   const q = query.trim();
+  const onPick = (c: ChordChoice) => (length === null ? pickChord(c) : pickChord(c, length));
   return (
     <div className="picker">
       <SheetHeader title="Add a chord" onClose={onClose} />
@@ -54,6 +67,16 @@ export function ChordPicker({ songKey, myChords = [], onPick, onCreate, onClose 
           autoComplete="off"
           spellCheck={false}
         />
+      </div>
+      <div className="picker-length">
+        <span className="section-label">Length</span>
+        <div className="seg" role="radiogroup" aria-label="Length">
+          {LENGTHS.map(([label, units]) => (
+            <button key={label} type="button" role="radio" aria-checked={length === units} onClick={() => setLength(units)}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {q ? <SearchResults query={q} mine={matching(myChords, q)} onPick={onPick} onCreate={onCreate} /> : <Library songKey={songKey} mine={myChords.map(asItem)} onPick={onPick} />}
       <div className="picker-footer">

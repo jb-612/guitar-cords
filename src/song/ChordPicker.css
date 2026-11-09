@@ -103,3 +103,18 @@
     transform: translateY(6px);
   }
 }
+
+.picker-length {
+  display: grid;
+  gap: 6px;
+  padding: 4px 16px 8px;
+}
+
+.picker-length .section-label {
+  margin: 0;
+}
+
+.picker-length .seg [role='radio'] {
+  min-height: 34px;
+  font-size: 13px;
+}

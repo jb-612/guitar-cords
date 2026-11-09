@@ -7,6 +7,8 @@ import { AlphaTabApi, LayoutMode, PlayerMode, StaveProfile, synth, type model } 
 import type { BarRange, PlayerEngine, PlayerEvent, ScoreView } from './engine';
 
 const base = import.meta.env.BASE_URL;
+/** alphaTab uses 960 MIDI ticks per quarter note; a quarter is 8 units. */
+const TICKS_PER_UNIT = 960 / 8;
 const STAVE_PROFILE: Record<ScoreView, StaveProfile> = { tab: StaveProfile.Tab, score: StaveProfile.Score };
 
 export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
@@ -36,7 +38,7 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
     wantsPlay = false;
   });
   api.playerStateChanged.on((e) => emit({ type: 'state', playing: e.state === synth.PlayerState.Playing }));
-  api.playedBeatChanged.on((beat: model.Beat) => emit({ type: 'position', bar: beat.voice.bar.index, beat: beat.index }));
+  api.playedBeatChanged.on((beat: model.Beat) => emit({ type: 'position', bar: beat.voice.bar.index, unit: Math.round(beat.playbackStart / TICKS_PER_UNIT) }));
   api.error.on((e) => emit({ type: 'error', message: String(e.message ?? e) }));
   api.scoreLoaded.on(() => applyRange(api, range));
 

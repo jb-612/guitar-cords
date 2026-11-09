@@ -11,7 +11,8 @@ export type SongView = 'chords' | ScoreView;
 
 export interface Position {
   bar: number;
-  beat: number;
+  /** Offset into the bar in units of a 1/32 note. */
+  unit: number;
 }
 
 export interface PlayerSettings {
@@ -68,7 +69,7 @@ export function usePlayer(song: Song) {
     const created = factory(host);
     created.subscribe((e: PlayerEvent) => {
       if (e.type === 'state') setPlaying(e.playing);
-      if (e.type === 'position') setPosition({ bar: e.bar, beat: e.beat });
+      if (e.type === 'position') setPosition({ bar: e.bar, unit: e.unit });
       if (e.type === 'error') setError(e.message);
     });
     setEngine(created);

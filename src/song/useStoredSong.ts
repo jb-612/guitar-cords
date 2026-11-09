@@ -3,17 +3,14 @@
  * Firebase sync milestone; storage failures (private mode, quota) never break the app.
  */
 import { useEffect, useState } from 'react';
-import { createSong, type Song } from './song';
+import { createSong, migrateSong, type Song } from './song';
 
 const STORAGE_KEY = 'guitar-cords:current-song';
 
-const isSong = (v: unknown): v is Song =>
-  typeof v === 'object' && v !== null && Array.isArray((v as Song).bars) && typeof (v as Song).title === 'string';
-
+/** The saved song, upgraded from older versions; a new song if there is none (or it can't be read). */
 function load(): Song {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-    return isSong(parsed) ? parsed : createSong();
+    return migrateSong(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')) ?? createSong();
   } catch {
     return createSong();
   }

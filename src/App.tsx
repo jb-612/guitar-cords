@@ -1,22 +1,49 @@
 import { useCallback, useState } from 'react';
 import { Sheet } from './components/Sheet';
 import { ChordEditor, type SavedChord } from './editor/ChordEditor';
-import { ChordActions } from './song/ChordActions';
-import { ChordPicker } from './song/ChordPicker';
-import { SongScreen } from './song/SongScreen';
 import { Transport } from './player/Transport';
 import { usePlayer } from './player/usePlayer';
-import { addChord, findChord, removeChord, replaceChord, setChordBeats, type ChordChoice, type Song, type SongChord } from './song/song';
+import { BarMenu } from './song/BarMenu';
+import { ChordPicker } from './song/ChordPicker';
+import { HitSheet } from './song/HitSheet';
+import { barUnits } from './song/rhythm';
+import { SongScreen } from './song/SongScreen';
+import { SongSetup } from './song/SongSetup';
+import {
+  addChord,
+  barTimeSignature,
+  createSong,
+  deleteBar,
+  fillRest,
+  findEvent,
+  insertBar,
+  removeEvent,
+  repeatHit,
+  replaceVoicing,
+  setHitStyle,
+  setLength,
+  setTempoFrom,
+  setTimeSignatureFrom,
+  type ChordChoice,
+  type ChordHit,
+  type Song,
+} from './song/song';
 import { useMyChords } from './song/useMyChords';
 import { useStoredSong } from './song/useStoredSong';
 import './App.css';
 
-/** What is open on top of the song: nothing, the picker, the editor (new or editing a chord), or a chord's options. */
+/** What is open on top of the song. */
 type Overlay =
   | { kind: 'none' }
-  | { kind: 'picker' }
-  | { kind: 'editor'; chordId: string | null }
-  | { kind: 'actions'; chordId: string };
+  /** Picking a chord: appended, or into a specific rest. */
+  | { kind: 'picker'; restId?: string }
+  /** Chord editor: a new chord (appended or into a rest), or a new fingering for an existing hit. */
+  | { kind: 'editor'; hitId?: string; restId?: string }
+  | { kind: 'hit'; id: string }
+  | { kind: 'bar'; index: number }
+  | { kind: 'setup' };
+
+type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
 export function App() {
   const [song, setSong] = useStoredSong();
@@ -24,23 +51,27 @@ export function App() {
   const { myChords, remember } = useMyChords();
   const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
-  const apply = (fn: (s: Song) => Song) => {
+  const apply: Apply = (fn, keepOpen = false) => {
     setSong(fn);
-    close();
+    if (!keepOpen) close();
   };
 
   return (
     <div className="app">
       <header className="app-bar">
         <span className="brand">Guitar Cords</span>
-        <span className="app-bar-title">Song</span>
+        <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'setup' })}>
+          New song
+        </button>
       </header>
       <SongScreen
         song={song}
         update={setSong}
         player={player}
         onAddChord={() => setOverlay({ kind: 'picker' })}
-        onChordTap={(chordId) => setOverlay({ kind: 'actions', chordId })}
+        onRestTap={(restId) => setOverlay({ kind: 'picker', restId })}
+        onHitTap={(id) => setOverlay({ kind: 'hit', id })}
+        onBarMenu={(index) => setOverlay({ kind: 'bar', index })}
       />
       <Transport song={song} player={player} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
@@ -55,80 +86,112 @@ interface OverlayProps {
   remember: (c: ChordChoice) => void;
   setOverlay: (o: Overlay) => void;
   close: () => void;
-  apply: (fn: (s: Song) => Song) => void;
+  apply: Apply;
 }
 
-function OverlayView({ overlay, song, myChords, remember, setOverlay, close, apply }: OverlayProps) {
-  if (overlay.kind === 'picker') {
-    return (
-      <Sheet label="Add a chord" onClose={close}>
-        <ChordPicker
-          songKey={song.key}
-          myChords={myChords}
-          onPick={(choice: ChordChoice) => apply((s) => addChord(s, choice))}
-          onCreate={() => setOverlay({ kind: 'editor', chordId: null })}
-          onClose={close}
-        />
-      </Sheet>
-    );
-  }
-  if (overlay.kind === 'editor') return <EditorSheet song={song} chordId={overlay.chordId} close={close} apply={apply} remember={remember} />;
-  const chord = overlay.kind === 'actions' ? findChord(song, overlay.chordId) : undefined;
-  return chord ? <ActionsSheet song={song} chord={chord} setOverlay={setOverlay} close={close} apply={apply} /> : null;
+type OverlayRenderers = { [K in Overlay['kind']]: (props: OverlayProps, overlay: Extract<Overlay, { kind: K }>) => React.ReactNode };
+
+const OVERLAYS: OverlayRenderers = {
+  none: () => null,
+  picker: (p, o) => <PickerSheet {...p} restId={o.restId} />,
+  editor: (p, o) => <EditorSheet {...p} hitId={o.hitId} restId={o.restId} />,
+  hit: (p, o) => <HitOptions {...p} id={o.id} />,
+  bar: (p, o) => <BarOptions {...p} index={o.index} />,
+  setup: (p) => <SetupSheet {...p} />,
+};
+
+function OverlayView(props: OverlayProps) {
+  const render = OVERLAYS[props.overlay.kind] as (p: OverlayProps, o: Overlay) => React.ReactNode;
+  return render(props, props.overlay);
 }
 
-const editorTitle = (existing?: SongChord) => (existing ? `Edit ${existing.symbol}` : 'New chord');
+/** Put a chosen chord where the creator asked: into a rest, or at the end of the song. */
+const placeChord = (choice: ChordChoice, restId?: string, units?: number) => (s: Song) =>
+  restId ? fillRest(s, restId, choice, units) : addChord(s, choice, units);
 
-/** Editing keeps the chord's own name (it may be custom); a new chord starts empty in the song key. */
-const editorStart = (song: Song, existing?: SongChord) => ({
-  initialShape: existing?.shape,
-  initialName: existing?.symbol ?? null,
-  initialKey: song.key ?? '',
-});
-
-interface EditorSheetProps {
-  song: Song;
-  chordId: string | null;
-  close: () => void;
-  apply: OverlayProps['apply'];
-  remember: OverlayProps['remember'];
-}
-
-function EditorSheet({ song, chordId, close, apply, remember }: EditorSheetProps) {
-  const existing = chordId ? findChord(song, chordId) : undefined;
-  const title = editorTitle(existing);
-  const save = ({ name, shape }: SavedChord) => {
-    const choice = { symbol: name, shape };
-    remember(choice);
-    apply((s) => (chordId ? replaceChord(s, chordId, choice) : addChord(s, choice)));
-  };
+function PickerSheet({ song, myChords, setOverlay, close, apply, restId }: OverlayProps & { restId?: string }) {
   return (
-    <Sheet label={title} onClose={close} wide>
-      <h2 className="sheet-title editor-sheet-title">{title}</h2>
-      <ChordEditor {...editorStart(song, existing)} onSave={save} onCancel={close} />
+    <Sheet label="Add a chord" onClose={close}>
+      <ChordPicker
+        songKey={song.key}
+        myChords={myChords}
+        onPick={(choice, units) => apply(placeChord(choice, restId, units))}
+        onCreate={() => setOverlay({ kind: 'editor', restId })}
+        onClose={close}
+      />
     </Sheet>
   );
 }
 
-interface ActionsProps {
-  song: Song;
-  chord: SongChord;
-  setOverlay: (o: Overlay) => void;
-  close: () => void;
-  apply: OverlayProps['apply'];
+const hitById = (song: Song, id?: string) => {
+  const at = id ? findEvent(song, id) : null;
+  return at?.event.kind === 'chord' ? at.event : undefined;
+};
+
+/** Editing keeps the hit's own name (it may be custom); a new chord starts empty in the song key. */
+function editorStart(song: Song, existing?: ChordHit) {
+  const key = song.key ?? '';
+  if (!existing) return { title: 'New chord', shape: undefined, name: null, key };
+  return { title: `Edit ${existing.symbol}`, shape: existing.shape, name: existing.symbol, key };
 }
 
-function ActionsSheet({ song, chord, setOverlay, close, apply }: ActionsProps) {
+function EditorSheet({ song, close, apply, remember, hitId, restId }: OverlayProps & { hitId?: string; restId?: string }) {
+  const existing = hitById(song, hitId);
+  const start = editorStart(song, existing);
+  const save = ({ name, shape }: SavedChord) => {
+    const choice = { symbol: name, shape };
+    remember(choice);
+    apply(existing ? (s) => replaceVoicing(s, existing.id, choice) : placeChord(choice, restId));
+  };
   return (
-    <Sheet label={`${chord.symbol} chord options`} onClose={close}>
-      <ChordActions
-        chord={chord}
-        beatsPerBar={song.beatsPerBar}
-        onEdit={() => setOverlay({ kind: 'editor', chordId: chord.id })}
-        onLength={(beats) => apply((s) => setChordBeats(s, chord.id, beats))}
-        onDelete={() => apply((s) => removeChord(s, chord.id))}
+    <Sheet label={start.title} onClose={close} wide>
+      <h2 className="sheet-title editor-sheet-title">{start.title}</h2>
+      <ChordEditor initialShape={start.shape} initialName={start.name} initialKey={start.key} onSave={save} onCancel={close} />
+    </Sheet>
+  );
+}
+
+function HitOptions({ song, setOverlay, close, apply, id }: OverlayProps & { id: string }) {
+  const at = findEvent(song, id);
+  if (at?.event.kind !== 'chord') return null;
+  const hit: ChordHit = at.event;
+  const room = barUnits(barTimeSignature(song, at.barIndex)) - at.start;
+  return (
+    <Sheet label={`${hit.symbol} chord options`} onClose={close}>
+      <HitSheet
+        hit={hit}
+        room={room}
+        onLength={(units) => apply((s) => setLength(s, id, units), true)}
+        onStyle={(style) => apply((s) => setHitStyle(s, id, style), true)}
+        onRepeat={() => apply((s) => repeatHit(s, id), true)}
+        onEdit={() => setOverlay({ kind: 'editor', hitId: id })}
+        onDelete={() => apply((s) => removeEvent(s, id))}
         onClose={close}
       />
+    </Sheet>
+  );
+}
+
+function BarOptions({ song, close, apply, index }: OverlayProps & { index: number }) {
+  return (
+    <Sheet label={`Bar ${index + 1}`} onClose={close}>
+      <BarMenu
+        song={song}
+        index={index}
+        onTimeSignature={(ts) => apply((s) => setTimeSignatureFrom(s, index, ts), true)}
+        onTempo={(bpm) => apply((s) => setTempoFrom(s, index, bpm), true)}
+        onInsert={(where) => apply((s) => insertBar(s, where === 'before' ? index : index + 1))}
+        onDelete={() => apply((s) => deleteBar(s, index))}
+        onClose={close}
+      />
+    </Sheet>
+  );
+}
+
+function SetupSheet({ close, apply }: OverlayProps) {
+  return (
+    <Sheet label="New song" onClose={close}>
+      <SongSetup onCreate={(setup) => apply(() => createSong(setup))} onClose={close} />
     </Sheet>
   );
 }

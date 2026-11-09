@@ -9,7 +9,7 @@ import { shapeFromFrets } from '../music/chordShape';
 const STORAGE_KEY = 'guitar-cords:current-song';
 
 function seedSong(): Song {
-  let s = createSong('Practice');
+  let s = createSong({ title: 'Practice' });
   s = addChord(s, { symbol: 'G', shape: shapeFromFrets('320003') });
   s = addChord(s, { symbol: 'C', shape: shapeFromFrets('x32010') });
   s = addChord(s, { symbol: 'D', shape: shapeFromFrets('xx0232') });
@@ -105,7 +105,7 @@ describe('song player', () => {
   it('follows playback: highlights the bar and shows the chord with its fingers', async () => {
     const { user, engine } = setup();
     await user.click(screen.getByRole('button', { name: 'Play' }));
-    engine().emit({ type: 'position', bar: 1, beat: 0 });
+    engine().emit({ type: 'position', bar: 1, unit: 0 });
     expect(bar(2)).toHaveAttribute('aria-current', 'true');
     const now = screen.getByRole('region', { name: 'Now playing' });
     expect(within(now).getByTestId('now-chord')).toHaveAccessibleName('C');
@@ -114,10 +114,23 @@ describe('song player', () => {
     expect(within(now).getByTestId('next-chord')).toHaveAccessibleName('D');
   });
 
+  it('while strumming the same chord, Next shows the next different chord', async () => {
+    let s = createSong({ title: 'Strums' });
+    for (const units of [8, 8, 8, 8]) s = addChord(s, { symbol: 'G', shape: shapeFromFrets('320003') }, units);
+    s = addChord(s, { symbol: 'C', shape: shapeFromFrets('x32010') });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+    const { user, engine } = setup();
+    await user.click(screen.getByRole('button', { name: 'Play' }));
+    engine().emit({ type: 'position', bar: 0, unit: 16 });
+    const now = screen.getByRole('region', { name: 'Now playing' });
+    expect(within(now).getByTestId('now-chord')).toHaveAccessibleName('G');
+    expect(within(now).getByTestId('next-chord')).toHaveAccessibleName('C');
+  });
+
   it('practice mode hides finger positions and keeps chord names', async () => {
     const { user, engine } = setup();
     await user.click(screen.getByRole('button', { name: 'Play' }));
-    engine().emit({ type: 'position', bar: 0, beat: 0 });
+    engine().emit({ type: 'position', bar: 0, unit: 0 });
     await user.click(screen.getByRole('button', { name: 'Hide fingers' }));
     const now = screen.getByRole('region', { name: 'Now playing' });
     expect(within(now).queryByTestId('now-diagram')).toBeNull();

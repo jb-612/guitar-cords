@@ -16,8 +16,8 @@ export interface BarRange {
 export type PlayerEvent =
   | { type: 'ready' }
   | { type: 'state'; playing: boolean }
-  /** Position: song bar index and the beat (quarter note) inside it. */
-  | { type: 'position'; bar: number; beat: number }
+  /** Position: song bar index and the offset into it, in units of a 1/32 note. */
+  | { type: 'position'; bar: number; unit: number }
   | { type: 'error'; message: string };
 
 export interface PlayerEngine {

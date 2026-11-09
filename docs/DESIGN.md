@@ -9,7 +9,7 @@ A mobile-first guitar chord and song editor. It runs in the browser and as a des
 | Stack | React + TypeScript (Vite), with Electron wrapping the same build for desktop |
 | Rendering and playback | [alphaTab](https://alphatab.net/): tab and score views, guitar soundfont, tempo, bar-range loop, metronome, playback cursor |
 | Music theory | [Tonal](https://github.com/tonaljs/tonal) finds chord candidates; our own code ranks them, detects the song key, transposes and suggests voicings |
-| Rhythm | v1: chords per bar (a number of beats per chord, plus a strum pattern). Later: note-level tab editing |
+| Rhythm | Bars of chord hits and rests in 1/32-note units, always full. Each hit has a length (whole to 1/32, dotted), strum down/up, strum or arpeggio, and let ring or cut off. Time signature and tempo can change at any bar. Later: note-level tab editing |
 | Lyrics | Yes. Each bar holds lyric text; chord names show above the words and stay in sync during playback |
 | Storage | Firebase (Auth + Firestore) on the owner's account, configured with `VITE_FIREBASE_*` in `.env.local` |
 | UI | Stylish but classic, pixel-perfect, with micro-animations; learnable without a manual |

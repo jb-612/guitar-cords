@@ -5,7 +5,7 @@
 
 .app-bar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   max-width: 880px;
   margin: 0 auto;
@@ -50,4 +50,25 @@
 
 .btn.danger {
   color: var(--danger);
+}
+
+.new-song-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--t-fast), transform var(--t-fast) var(--ease-out);
+}
+
+.new-song-btn:hover {
+  border-color: var(--brass);
+}
+
+.new-song-btn:active {
+  transform: scale(0.96);
 }
