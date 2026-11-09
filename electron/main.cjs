@@ -10,13 +10,12 @@
 const { app, BrowserWindow, net, protocol, shell } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { createPolicy, chromeUserAgent } = require('./navigation.cjs');
 
 const SCHEME = 'app';
 const DIST = path.join(__dirname, '..', 'dist');
 const devUrl = process.env.VITE_DEV_SERVER_URL;
 
-/** Firebase sign-in popups are the only other pages allowed to open inside the app. */
-const AUTH_HOSTS = [/\.firebaseapp\.com$/, /^accounts\.google\.com$/];
 
 const CSP = [
   "default-src 'self'",
@@ -49,26 +48,24 @@ function serveDist() {
   });
 }
 
-const isAppUrl = (url) => url.startsWith(`${SCHEME}://`) || (devUrl && url.startsWith(devUrl));
-const isAuthUrl = (url) => {
-  try {
-    return AUTH_HOSTS.some((h) => h.test(new URL(url).hostname));
-  } catch {
-    return false;
-  }
-};
+const policy = createPolicy({ scheme: SCHEME, devUrl });
+/** Firebase sign-in popups: the only other pages that open inside the app. */
+const signInPopups = new WeakSet();
 
 function lockDown(contents) {
   contents.on('will-navigate', (event, url) => {
-    if (!isAppUrl(url)) {
-      event.preventDefault();
-      void shell.openExternal(url);
-    }
+    if (policy.canNavigate(url, signInPopups.has(contents))) return;
+    event.preventDefault();
+    void shell.openExternal(url);
   });
   contents.setWindowOpenHandler(({ url }) => {
-    if (isAuthUrl(url)) return { action: 'allow' };
+    if (policy.canOpenPopup(url)) return { action: 'allow' };
     void shell.openExternal(url);
     return { action: 'deny' };
+  });
+  contents.on('did-create-window', (child) => {
+    signInPopups.add(child.webContents);
+    child.webContents.setUserAgent(chromeUserAgent(child.webContents.getUserAgent()));
   });
 }
 
