@@ -2,21 +2,11 @@ import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { alphaTab } from '@coderline/alphatab-vite';
 import { VitePWA } from 'vite-plugin-pwa';
+// One policy for the desktop app and the web build (meta tag: GitHub Pages can't send headers).
+import csp from './electron/csp.cjs';
 
-/** Content Security Policy for the web build (GitHub Pages can't send headers, so it goes in a meta tag). */
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "media-src 'self' blob:",
-  "worker-src 'self' blob:",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com",
-  'frame-src https://*.firebaseapp.com',
-  "object-src 'none'",
-  "base-uri 'self'",
-].join('; ');
+const { CSP } = csp;
+
 
 const cspMeta = (): Plugin => ({
   name: 'csp-meta',

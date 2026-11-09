@@ -15,6 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createPolicy, chromeUserAgent } = require('./navigation.cjs');
 const { startServer } = require('./server.cjs');
+const { CSP } = require('./csp.cjs');
 
 /** Fixed so saved songs (stored per origin) are found again next launch; later ones only if it's taken. */
 const APP_PORTS = [47317, 47318, 47319, 0];
@@ -22,19 +23,6 @@ const DIST = path.join(__dirname, '..', 'dist');
 const devUrl = process.env.VITE_DEV_SERVER_URL;
 
 
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "media-src 'self' blob:",
-  "worker-src 'self' blob:",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com",
-  'frame-src https://*.firebaseapp.com',
-  "object-src 'none'",
-  "base-uri 'self'",
-].join('; ');
 
 if (process.env.GC_SELFTEST) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'guitar-cords-selftest-')));
 
