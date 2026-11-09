@@ -43,7 +43,6 @@ export function SongSetup({ onCreate, onClose }: Props) {
         <span className="section-label">Tempo (bpm)</span>
         <input className="text-input" type="number" min={20} max={300} aria-label="Tempo (bpm)" value={bpm} onChange={(e) => setBpm(e.target.value)} />
       </label>
-      <p className="setup-note">This replaces the song you're working on. Its chords stay in My chords.</p>
       <div className="hit-actions">
         <button type="submit" className="btn primary" disabled={!valid}>
           Create song

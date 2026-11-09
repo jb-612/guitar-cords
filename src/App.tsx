@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { LibrarySheet } from './library/LibrarySheet';
+import { useLibrary, type LibraryApi } from './library/useLibrary';
 import { Sheet } from './components/Sheet';
 import { ChordEditor, type SavedChord } from './editor/ChordEditor';
 import { Transport } from './player/Transport';
@@ -12,7 +14,6 @@ import { SongSetup } from './song/SongSetup';
 import {
   addChord,
   barTimeSignature,
-  createSong,
   deleteBar,
   duplicateBar,
   moveBar,
@@ -34,7 +35,6 @@ import {
   type Song,
 } from './song/song';
 import { useMyChords } from './song/useMyChords';
-import { useStoredSong } from './song/useStoredSong';
 import './App.css';
 
 /** What is open on top of the song. */
@@ -46,12 +46,37 @@ type Overlay =
   | { kind: 'editor'; hitId?: string; restId?: string }
   | { kind: 'hit'; id: string }
   | { kind: 'bar'; index: number }
-  | { kind: 'setup' };
+  | { kind: 'setup' }
+  | { kind: 'library' };
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
+function undoCommand(e: KeyboardEvent): 'undo' | 'redo' | null {
+  if (!(e.metaKey || e.ctrlKey)) return null;
+  const key = e.key.toLowerCase();
+  if (key === 'y') return 'redo';
+  if (key !== 'z') return null;
+  return e.shiftKey ? 'redo' : 'undo';
+}
+
+/** Ctrl/Cmd+Z undo, Shift+Ctrl/Cmd+Z or Ctrl+Y redo — anywhere in the app. */
+function useUndoKeys(library: LibraryApi) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const command = undoCommand(e);
+      if (!command) return;
+      e.preventDefault();
+      library[command]();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [library]);
+}
+
 export function App() {
-  const [song, setSong] = useStoredSong();
+  const library = useLibrary();
+  const { song, update: setSong } = library;
+  useUndoKeys(library);
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
   const { myChords, remember } = useMyChords();
   const player = usePlayer(song);
@@ -65,9 +90,20 @@ export function App() {
     <div className="app">
       <header className="app-bar">
         <span className="brand">Guitar Cords</span>
-        <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'setup' })}>
-          New song
-        </button>
+        <nav className="app-actions" aria-label="Song actions">
+          <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'library' })}>
+            My songs
+          </button>
+          <button type="button" className="icon-btn small" aria-label="Undo" title="Undo (Ctrl/⌘+Z)" disabled={!library.canUndo} onClick={library.undo}>
+            ↶
+          </button>
+          <button type="button" className="icon-btn small" aria-label="Redo" title="Redo (Shift+Ctrl/⌘+Z)" disabled={!library.canRedo} onClick={library.redo}>
+            ↷
+          </button>
+          <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'setup' })}>
+            New song
+          </button>
+        </nav>
       </header>
       <SongScreen
         song={song}
@@ -81,7 +117,7 @@ export function App() {
         onMoveBar={(from, to) => setSong((s) => moveBar(s, from, to))}
       />
       <Transport song={song} player={player} />
-      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
+      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} />
     </div>
   );
 }
@@ -94,6 +130,7 @@ interface OverlayProps {
   setOverlay: (o: Overlay) => void;
   close: () => void;
   apply: Apply;
+  library: LibraryApi;
 }
 
 type OverlayRenderers = { [K in Overlay['kind']]: (props: OverlayProps, overlay: Extract<Overlay, { kind: K }>) => React.ReactNode };
@@ -105,6 +142,7 @@ const OVERLAYS: OverlayRenderers = {
   hit: (p, o) => <HitOptions {...p} id={o.id} />,
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
+  library: (p) => <LibraryOverlay {...p} />,
 };
 
 function OverlayView(props: OverlayProps) {
@@ -214,10 +252,36 @@ function BarOptions({ song, close, apply, index }: OverlayProps & { index: numbe
   );
 }
 
-function SetupSheet({ close, apply }: OverlayProps) {
+function SetupSheet({ close, library }: OverlayProps) {
   return (
     <Sheet label="New song" onClose={close}>
-      <SongSetup onCreate={(setup) => apply(() => createSong(setup))} onClose={close} />
+      <SongSetup
+        onCreate={(setup) => {
+          library.create(setup);
+          close();
+        }}
+        onClose={close}
+      />
+    </Sheet>
+  );
+}
+
+function LibraryOverlay({ close, setOverlay, library }: OverlayProps) {
+  return (
+    <Sheet label="My songs" onClose={close}>
+      <LibrarySheet
+        songs={library.songs}
+        currentId={library.lib.currentId}
+        onOpen={(id) => {
+          library.open(id);
+          close();
+        }}
+        onRename={library.rename}
+        onDuplicate={library.duplicate}
+        onDelete={library.remove}
+        onNew={() => setOverlay({ kind: 'setup' })}
+        onClose={close}
+      />
     </Sheet>
   );
 }

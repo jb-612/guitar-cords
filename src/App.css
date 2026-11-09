@@ -88,3 +88,15 @@
   height: 18px;
   accent-color: var(--brass-strong);
 }
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn.small {
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+}

@@ -19,7 +19,8 @@ import { useHitDrag, type DragView } from './useHitDrag';
 import { setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
 import './SongScreen.css';
 
-type Update = (fn: (s: Song) => Song) => void;
+/** Edit the song; a `tag` merges quick repeated edits (typing) into one undo step. */
+type Update = (fn: (s: Song) => Song, tag?: string) => void;
 
 export interface SongScreenActions {
   onAddChord: () => void;
@@ -49,7 +50,7 @@ export function SongScreen(props: Props) {
         className="song-title"
         aria-label="Song title"
         value={song.title}
-        onChange={(e) => update((s) => ({ ...s, title: e.target.value }))}
+        onChange={(e) => update((s) => ({ ...s, title: e.target.value }), 'title')}
         onFocus={(e) => e.target.select()}
       />
       <div className="song-settings">
@@ -321,7 +322,7 @@ function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, 
         aria-label={`Lyrics for bar ${n}`}
         placeholder="lyrics…"
         value={bar.lyrics}
-        onChange={(e) => update((s) => setLyrics(s, bar.id, e.target.value))}
+        onChange={(e) => update((s) => setLyrics(s, bar.id, e.target.value), `lyrics:${bar.id}`)}
       />
     </li>
   );

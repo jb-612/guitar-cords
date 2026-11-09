@@ -52,6 +52,8 @@ export interface Song {
   /** Meter at the start of the song. */
   timeSignature: TimeSignature;
   bars: Bar[];
+  /** Last change, ms since epoch (library ordering and sync). */
+  updatedAt?: number;
 }
 
 export interface ChordChoice {
