@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a221c"/>
+      <stop offset="1" stop-color="#15120f"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d4a556"/>
+      <stop offset="1" stop-color="#9a6f26"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- nut -->
+  <rect x="262" y="250" width="500" height="34" rx="10" fill="#efe7da"/>
+  <!-- frets -->
+  <g stroke="#8f8a84" stroke-width="10" opacity="0.8">
+    <line x1="270" y1="400" x2="754" y2="400"/>
+    <line x1="270" y1="530" x2="754" y2="530"/>
+    <line x1="270" y1="660" x2="754" y2="660"/>
+    <line x1="270" y1="790" x2="754" y2="790"/>
+  </g>
+  <!-- strings: wound bronze, plain steel -->
+  <g stroke-linecap="round">
+    <line x1="280" y1="270" x2="280" y2="800" stroke="#b08a5c" stroke-width="16"/>
+    <line x1="376" y1="270" x2="376" y2="800" stroke="#b08a5c" stroke-width="13"/>
+    <line x1="472" y1="270" x2="472" y2="800" stroke="#b08a5c" stroke-width="11"/>
+    <line x1="568" y1="270" x2="568" y2="800" stroke="#a7a29b" stroke-width="9"/>
+    <line x1="664" y1="270" x2="664" y2="800" stroke="#a7a29b" stroke-width="7"/>
+    <line x1="744" y1="270" x2="744" y2="800" stroke="#a7a29b" stroke-width="6"/>
+  </g>
+  <!-- a C chord in brass -->
+  <g fill="url(#brass)">
+    <circle cx="376" cy="725" r="52"/>
+    <circle cx="472" cy="595" r="52"/>
+    <circle cx="664" cy="465" r="52"/>
+  </g>
+  <g fill="#15120f" font-family="Georgia, serif" font-weight="700" font-size="58" text-anchor="middle">
+    <text x="376" y="745">3</text>
+    <text x="472" y="615">2</text>
+    <text x="664" y="485">1</text>
+  </g>
+</svg>

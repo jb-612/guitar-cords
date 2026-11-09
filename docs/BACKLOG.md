@@ -26,35 +26,15 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 | 6 | ✅ Playback errors | Shown above the transport, dismissable. |
 | 7 | ✅ Auto-scroll | The playing bar stays on screen. |
 
-## P2 — important
+## P2 — done ✅
 
-**Desktop and mobile delivery**
-- Package the desktop app with electron-builder for macOS, Windows and Linux, with app icon and signing.
-- Make sure alphaTab's worker, audio worklet, SoundFont and fonts load from `file://` in the packaged app. So far this is only verified through the dev server.
-- Content Security Policy for Electron (the security warning seen in dev).
-- Installable mobile web app (PWA): manifest, offline service worker, home-screen icon.
-- Test on real devices (iOS Safari, Android Chrome): audio unlock on iOS, long-press menus, touch dragging.
-
-**Playback and practice**
-- Count-in (one bar of clicks before the song starts).
-- Volume mix for guitar, drums and metronome.
-- Guitar sound choice: steel, nylon, electric clean.
-- Strumming-pattern presets applied to a bar (e.g. D DU UDU).
-- Swing feel for the guitar part, not just the drums.
-- Drum fills at section ends; intro and outro.
-- Speed trainer: automatically speed up the loop a little each pass.
-
-**Song structure**
-- Sections (Intro / Verse / Chorus / Bridge) with labels.
-- Repeat signs, 1st/2nd endings, D.S./D.C.
-- Capo setting for the whole song (fingerings stay, sound shifts).
-- Multi-select bars and hits: copy, paste, delete a range.
-
-**Sharing and export**
-- Export Guitar Pro, MusicXML and MIDI (alphaTab supports these).
-- Print or export a PDF chord sheet with lyrics; print tab or score.
-- Share a song link (after Firebase).
-- Import Guitar Pro / MusicXML files.
+- ✅ **Desktop apps**: macOS built and self-tested here (plays a song, renders tab, no CSP errors); Linux AppImage and Windows zip cross-built here; `release.yml` builds and self-tests all three on tag. Code signing/notarisation still needs your certificates.
+- ✅ **Electron security**: app:// protocol, CSP, sandbox, navigation lock.
+- ✅ **Installable web app (PWA)**: manifest, icons, offline cache, verified to reload offline; GitHub Pages deploy.
+- ◐ **Real phones**: emulated iPhone 15 and Pixel 8 with touch (`npm run test:mobile`), which found and fixed 3 touch bugs. **Not yet tried on physical devices.**
+- ✅ Count-in, volumes, guitar sound, strum presets, swing feel, drum fills/crash/ending, speed trainer.
+- ✅ Sections, repeats and endings, song-wide capo, multi-select with copy/cut/paste/delete.
+- ✅ Export Guitar Pro / MusicXML / MIDI / song file, print or PDF chord sheet, share links, import.
 
 ## P3 — nice to have
 

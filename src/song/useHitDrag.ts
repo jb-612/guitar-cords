@@ -54,7 +54,6 @@ function createDragController(setView: (v: DragView | null) => void) {
     window.removeEventListener('pointermove', onMove);
     window.removeEventListener('pointerup', onUp);
     window.removeEventListener('pointercancel', end);
-    window.removeEventListener('touchmove', blockScroll);
   };
 
   /** Before a drag starts: a mouse that moves starts it; a finger that moves before the hold is a scroll. */
@@ -97,7 +96,15 @@ function createDragController(setView: (v: DragView | null) => void) {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', end);
+  };
+
+  /**
+   * Browsers decide at touchstart whether a gesture may scroll, using the listeners present then.
+   * So the scroll blocker is registered once, up front, and only acts while a drag is active.
+   */
+  const attach = () => {
     window.addEventListener('touchmove', blockScroll, { passive: false });
+    return () => window.removeEventListener('touchmove', blockScroll);
   };
 
   /** True (and reset) if the current click is the tail of a drag. */
@@ -111,7 +118,7 @@ function createDragController(setView: (v: DragView | null) => void) {
     drop = fn;
   };
 
-  return { begin, end, consumeClick, setDrop };
+  return { begin, end, consumeClick, setDrop, attach };
 }
 
 export function useHitDrag(onDrop: Drop) {
@@ -119,5 +126,6 @@ export function useHitDrag(onDrop: Drop) {
   const [controller] = useState(() => createDragController(setView));
   useEffect(() => controller.setDrop(onDrop), [controller, onDrop]);
   useEffect(() => controller.end, [controller]);
+  useEffect(() => controller.attach(), [controller]);
   return { view, onSlotPointerDown: controller.begin, consumeClick: controller.consumeClick };
 }

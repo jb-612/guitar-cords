@@ -13,7 +13,13 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint . --max-warnings 0",
     "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5317 && cross-env VITE_DEV_SERVER_URL=http://localhost:5317 electron .\"",
-    "electron:start": "npm run build && electron ."
+    "electron:start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "selftest:packaged": "node scripts/selftest-packaged.mjs",
+    "test:mobile": "electron scripts/mobile-check.cjs"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.9.0",
@@ -37,6 +43,7 @@
     "concurrently": "^10.0.7",
     "cross-env": "^10.1.0",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
@@ -44,7 +51,59 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.6",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.1.0",
     "wait-on": "^9.5.1"
+  },
+  "description": "Mobile-first guitar chord and song editor with tab, score and playback.",
+  "author": {
+    "name": "jb-612"
+  },
+  "license": "MIT",
+  "homepage": "https://jb-612.github.io/guitar-cords/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jb-612/guitar-cords.git"
+  },
+  "build": {
+    "appId": "io.github.jb612.guitarcords",
+    "productName": "Guitar Cords",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Audio",
+      "icon": "build/icon.png",
+      "maintainer": "jb-612"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

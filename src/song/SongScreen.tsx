@@ -230,15 +230,28 @@ function CapoRow({ song, update, onTranspose }: { song: Song; update: Update; on
 
 const LONG_PRESS_MS = 550;
 
-/** Press-and-hold opens the bar menu on touch screens (where there is no right-click). */
+const LONG_PRESS_SLOP_PX = 8;
+
+/** Chords, rests, buttons and fields have their own press gestures (drag, tap, typing). */
+const ownsGesture = (target: EventTarget) => target instanceof Element && !!target.closest('[data-slot-id], button, input, select, textarea');
+
+/**
+ * Press-and-hold on the bar itself (not on a chord, rest or control) opens the bar menu on
+ * touch screens, where there is no right-click. Moving the finger cancels it.
+ */
 function useLongPress(onLongPress: () => void) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const origin = useRef({ x: 0, y: 0 });
   const cancel = () => clearTimeout(timer.current);
   return {
     onPointerDown: (e: PointerEvent) => {
-      if (e.pointerType === 'mouse') return;
       cancel();
+      if (e.pointerType === 'mouse' || ownsGesture(e.target)) return;
+      origin.current = { x: e.clientX, y: e.clientY };
       timer.current = setTimeout(onLongPress, LONG_PRESS_MS);
+    },
+    onPointerMove: (e: PointerEvent) => {
+      if (Math.hypot(e.clientX - origin.current.x, e.clientY - origin.current.y) > LONG_PRESS_SLOP_PX) cancel();
     },
     onPointerUp: cancel,
     onPointerLeave: cancel,
@@ -495,6 +508,7 @@ function Lane({ events, previous, actions, drag }: LaneProps) {
             key={e.id}
             hit={e}
             isChange={!before || voicingKey(before) !== voicingKey(e)}
+            barStart={events.findIndex((x) => x.kind === 'chord') === i}
             dnd={dnd}
             onTap={tap(() => actions.onHitTap(e.id))}
             onPointerDown={(ev) => drag.onSlotPointerDown(ev, e.id, e.symbol)}
@@ -536,12 +550,14 @@ const slotClass = (hit: ChordHit, isChange: boolean, dnd: Dnd) =>
 interface HitSlotProps {
   hit: ChordHit;
   isChange: boolean;
+  /** First chord of the bar: always named, so a bar never looks empty. */
+  barStart: boolean;
   dnd: Dnd;
   onTap: () => void;
   onPointerDown: (e: PointerEvent) => void;
 }
 
-function HitSlot({ hit, isChange, dnd, onTap, onPointerDown }: HitSlotProps) {
+function HitSlot({ hit, isChange, barStart, dnd, onTap, onPointerDown }: HitSlotProps) {
   return (
     <button
       type="button"
@@ -554,7 +570,7 @@ function HitSlot({ hit, isChange, dnd, onTap, onPointerDown }: HitSlotProps) {
       style={{ flexGrow: hit.units }}
       onClick={onTap}
     >
-      {isChange && <ChordSymbol symbol={hit.symbol} inline />}
+      {(isChange || barStart) && <ChordSymbol symbol={hit.symbol} inline />}
       {isChange && hit.units >= QUARTER && <ChordThumb shape={hit.shape} />}
       <span className="hit-arrow" aria-hidden="true">
         {ARROWS[`${hit.style}-${hit.direction}`]}

@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'release'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -13,5 +13,6 @@ export default tseslint.config(
     plugins: { 'react-hooks': reactHooks },
     rules: { ...reactHooks.configs.recommended.rules, complexity: ['warn', 5] },
   },
-  { files: ['electron/**/*.cjs'], languageOptions: { globals: globals.node, sourceType: 'commonjs' }, rules: { '@typescript-eslint/no-require-imports': 'off' } },
+  { files: ['electron/**/*.cjs', 'scripts/**/*.cjs'], languageOptions: { globals: globals.node, sourceType: 'commonjs' }, rules: { '@typescript-eslint/no-require-imports': 'off' } },
+  { files: ['scripts/**/*.mjs'], languageOptions: { globals: globals.node } },
 );

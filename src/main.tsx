@@ -6,9 +6,12 @@ import '@fontsource-variable/inter';
 import './styles/tokens.css';
 import './styles/controls.css';
 import { App } from './App';
+import { registerServiceWorker } from './pwa';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
+
+registerServiceWorker();

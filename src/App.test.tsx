@@ -160,6 +160,14 @@ describe('App song flow', () => {
     expect(lanes()).toEqual([['G', '-']]);
   });
 
+  it('names the chord at the start of every bar, even when it continues from the bar before', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addFromLibrary(user, 'G');
+    await addFromLibrary(user, 'G');
+    expect(within(hits(2)[0]!).getByText('G')).toBeInTheDocument();
+  });
+
   it('starts a new song with its own title, time signature and tempo', async () => {
     const user = userEvent.setup();
     render(<App />);

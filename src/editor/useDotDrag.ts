@@ -37,6 +37,15 @@ function toSvgPoint(svg: SVGSVGElement, e: PointerEvent): { x: number; y: number
 
 const pointIn = (svgRef: RefObject<SVGSVGElement | null>, e: PointerEvent) => (svgRef.current ? toSvgPoint(svgRef.current, e) : null);
 
+/** Keep receiving this pointer's events while it moves off the dot (some pointers can't be captured). */
+function capture(el: Element, pointerId: number) {
+  try {
+    el.setPointerCapture?.(pointerId);
+  } catch {
+    // Not capturable (e.g. synthetic or already released): window listeners still follow it.
+  }
+}
+
 const movedFar = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) > DRAG_THRESHOLD;
 
 interface Options {
@@ -70,7 +79,7 @@ export function useDotDrag({ svgRef, shape, startFret, dispatch }: Options) {
     (e: PointerEvent, dot: { string: number; fret: number }) => {
       const p = svgRef.current && toSvgPoint(svgRef.current, e);
       if (!p) return;
-      svgRef.current!.setPointerCapture?.(e.pointerId);
+      capture(svgRef.current!, e.pointerId);
       origin.current = p;
       setDrag({ from: dot.string, fret: dot.fret, ...p, mode: 'pressing' });
       clearTimeout(holdTimer.current);

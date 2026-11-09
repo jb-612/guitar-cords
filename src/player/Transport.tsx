@@ -2,7 +2,7 @@
  * Sticky transport bar: play/pause, stop, tempo, loop, metronome, practice mode, and
  * the bar-section loop.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sheet } from '../components/Sheet';
 import type { Song } from '../song/song';
 import { MixerSheet } from './MixerSheet';
@@ -13,6 +13,21 @@ import './player.css';
 const MIN_SPEED = 25;
 const MAX_SPEED = 200;
 
+/** Keep page content clear of the fixed transport: publish its height as --transport-h. */
+function useReservedSpace() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const set = () => document.documentElement.style.setProperty('--transport-h', `${el.offsetHeight}px`);
+    const observer = new ResizeObserver(set);
+    observer.observe(el);
+    set();
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
 interface TransportProps {
   song: Song;
   player: Player;
@@ -22,9 +37,10 @@ interface TransportProps {
 export function Transport({ song, player, onSongChange }: TransportProps) {
   const { settings, update } = player;
   const [mixer, setMixer] = useState(false);
+  const ref = useReservedSpace();
   const percent = Math.round(settings.speed * 100);
   return (
-    <div className="transport" role="toolbar" aria-label="Playback">
+    <div ref={ref} className="transport" role="toolbar" aria-label="Playback">
       {player.error && <PlaybackError message={player.error} onDismiss={player.dismissError} />}
       <div className="transport-main">
         <button type="button" className="play-btn" aria-label={player.playing ? 'Pause' : 'Play'} disabled={song.bars.length === 0} onClick={player.playPause}>

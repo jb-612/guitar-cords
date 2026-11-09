@@ -528,7 +528,7 @@
 
 .selection-bar {
   position: sticky;
-  bottom: 160px;
+  bottom: calc(var(--transport-h, 150px) + 12px);
   z-index: 30;
   display: flex;
   flex-wrap: wrap;
