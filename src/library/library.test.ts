@@ -1,4 +1,4 @@
-import { addSong, createLibrary, currentSong, deleteSong, duplicateSong, migrateLibrary, openSong, renameSong, updateCurrent } from './library';
+import { addSong, clearDeleted, createLibrary, currentSong, deleteSong, duplicateSong, migrateLibrary, openSong, renameSong, updateCurrent } from './library';
 import { addChord, createSong } from '../song/song';
 import { shapeFromFrets } from '../music/chordShape';
 
@@ -58,6 +58,16 @@ describe('song library', () => {
     const after = deleteSong(solo, solo.songs[0]!.id);
     expect(after.songs).toHaveLength(1);
     expect(after.songs[0]!.id).not.toBe(solo.songs[0]!.id);
+  });
+
+  it('remembers deleted songs for sync until cleared', () => {
+    const lib0 = addSong(createLibrary(), titled('B'));
+    const b = lib0.songs[1]!.id;
+    const lib = deleteSong(lib0, b);
+    expect(lib.deleted).toEqual([b]);
+    const last = deleteSong(lib, lib.songs[0]!.id);
+    expect(last.deleted).toHaveLength(2);
+    expect(clearDeleted(last, [b]).deleted).toHaveLength(1);
   });
 
   it('migrates the single song saved by earlier versions', () => {

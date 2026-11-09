@@ -1,0 +1,71 @@
+.account-text p {
+  margin: 0 0 8px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.account-text code {
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+.account-error {
+  margin: 8px 16px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.sync-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+}
+
+.sync-status.is-synced::before {
+  background: #4f8a4b;
+}
+
+.sync-status.is-syncing::before {
+  background: var(--brass);
+  animation: breathe 1.2s ease-in-out infinite;
+}
+
+.sync-status.is-offline::before,
+.sync-status.is-error::before {
+  background: var(--danger);
+}
+
+.account-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+}
+
+.account-dot.is-synced {
+  background: #4f8a4b;
+}
+
+.account-dot.is-syncing {
+  background: var(--brass);
+}
+
+.account-dot.is-offline,
+.account-dot.is-error {
+  background: var(--danger);
+}

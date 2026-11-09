@@ -43,6 +43,8 @@ npm run lint           # ESLint; the `complexity` rule warns above 5
 - alphaTab assets (worker, worklet, fonts, SoundFont) are served by `@coderline/alphatab-vite` in `vite.config.ts`. Audio and the tab/score views can't run in jsdom; verify them in Electron (see the screenshot technique below).
 - `src/components/` holds shared pieces: `Sheet` (modal: bottom sheet on phones, centered on ≥760px), `ChordThumb` (static mini diagram), `KeySelect`. Shared control styles (`.btn`, `.section-label`, `.card`) live in `src/styles/controls.css`.
 - Styling: every color, radius, shadow and motion value is a CSS variable in `src/styles/tokens.css` (light = ivory/ink/brass, dark = ebony). Animations use `--t-fast`/`--t-med`, which drop to 0 under `prefers-reduced-motion`. Fonts (Fraunces, Inter) are bundled locally via `@fontsource-variable` so Electron works offline.
+- `src/library/`: the song library (`library.ts`, pure) and `useLibrary` (persistence, plus per-song undo history from `history.ts`; tagged edits within 800 ms merge into one step). All song edits go through `library.update(fn, tag?)`.
+- `src/sync/`: cloud sync behind the `SyncBackend` interface (`backend.ts`). `firestoreBackend.ts` is loaded lazily and only when `VITE_FIREBASE_*` are set; otherwise `offlineBackend` is used. Merge rules are in `merge.ts`: newest `updatedAt` wins; equal timestamps keep the local object, so upload echoes don't reset undo history; deletes travel as tombstones via `library.deleted`. Tests inject `FakeCloud` through `SyncContext`. Firestore rules are in `firestore.rules`.
 - Firebase config comes from `VITE_FIREBASE_*` env vars (`.env.example` → `.env.local`, git-ignored).
 - `vite.config.ts` uses `base: './'` so `dist/index.html` loads from `file://` in Electron.
 

@@ -37,5 +37,5 @@ export function useMyChords() {
     }
   }, [chords]);
   const remember = useCallback((chord: ChordChoice) => setChords((list) => rememberChord(list, chord)), []);
-  return { myChords: chords, remember };
+  return { myChords: chords, remember, replaceAll: setChords };
 }

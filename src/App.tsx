@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LibrarySheet } from './library/LibrarySheet';
 import { useLibrary, type LibraryApi } from './library/useLibrary';
+import { AccountSheet, statusText } from './sync/AccountSheet';
+import { useSync, type SyncApi } from './sync/useSync';
 import { Sheet } from './components/Sheet';
 import { ChordEditor, type SavedChord } from './editor/ChordEditor';
 import { Transport } from './player/Transport';
@@ -49,7 +51,8 @@ type Overlay =
   | { kind: 'bar'; index: number }
   | { kind: 'setup' }
   | { kind: 'library' }
-  | { kind: 'transpose' };
+  | { kind: 'transpose' }
+  | { kind: 'account' };
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
@@ -79,7 +82,9 @@ export function App() {
   const { song, update: setSong } = library;
   useUndoKeys(library);
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
-  const { myChords, remember } = useMyChords();
+  const chords = useMyChords();
+  const { myChords, remember } = chords;
+  const sync = useSync(library, chords);
   const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply: Apply = (fn, keepOpen = false) => {
@@ -104,6 +109,10 @@ export function App() {
           <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'setup' })}>
             New song
           </button>
+          <button type="button" className="new-song-btn account-btn" aria-label="Account" title={statusText(sync.status)} onClick={() => setOverlay({ kind: 'account' })}>
+            <span className={`account-dot is-${sync.status}`} aria-hidden="true" />
+            {sync.user ? 'Synced' : 'Sign in'}
+          </button>
         </nav>
       </header>
       <SongScreen
@@ -119,7 +128,7 @@ export function App() {
         onTranspose={() => setOverlay({ kind: 'transpose' })}
       />
       <Transport song={song} player={player} />
-      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} />
+      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} />
     </div>
   );
 }
@@ -133,6 +142,7 @@ interface OverlayProps {
   close: () => void;
   apply: Apply;
   library: LibraryApi;
+  sync: SyncApi;
 }
 
 type OverlayRenderers = { [K in Overlay['kind']]: (props: OverlayProps, overlay: Extract<Overlay, { kind: K }>) => React.ReactNode };
@@ -145,6 +155,11 @@ const OVERLAYS: OverlayRenderers = {
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
   library: (p) => <LibraryOverlay {...p} />,
+  account: (p) => (
+    <Sheet label="Account" onClose={p.close}>
+      <AccountSheet sync={p.sync} onClose={p.close} />
+    </Sheet>
+  ),
   transpose: (p) => (
     <Sheet label="Transpose & key" onClose={p.close}>
       <TransposeSheet song={p.song} onApply={(next) => p.apply(() => next)} onClose={p.close} />

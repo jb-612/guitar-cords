@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { createSong, type Song, type SongSetup } from '../song/song';
 import { canRedo, canUndo, push, redo, startHistory, undo, type History } from './history';
-import { addSong, currentSong, deleteSong, duplicateSong, migrateLibrary, openSong, putSong, renameSong, updateCurrent, type Library } from './library';
+import { addSong, clearDeleted, currentSong, deleteSong, duplicateSong, migrateLibrary, openSong, putSong, renameSong, updateCurrent, type Library } from './library';
 
 export const LIBRARY_KEY = 'guitar-cords:library';
 /** Where versions before the library kept their one song. */
@@ -82,6 +82,8 @@ export function useLibrary() {
     remove: (id: string) => libraryAction((lib) => deleteSong(lib, id)),
     /** Replace the whole library (sync). Keeps the open song's history if it is unchanged. */
     replaceLibrary: (lib: Library) => setState((s) => (currentSong(lib) === currentSong(s.lib) ? { ...s, lib } : withLib(lib))),
+    /** Sync uploaded these deletions. */
+    forgetDeleted: (ids: string[]) => setState((s) => ({ ...s, lib: clearDeleted(s.lib, ids) })),
     /** Put one song from elsewhere (sync), without touching history unless it is the open one. */
     putSong: (song: Song) => setState((s) => (song.id === s.lib.currentId ? withLib(putSong(s.lib, song)) : { ...s, lib: putSong(s.lib, song) })),
   };

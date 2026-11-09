@@ -7,6 +7,8 @@ import { createSong, migrateSong, type Song } from '../song/song';
 export interface Library {
   currentId: string;
   songs: Song[];
+  /** Ids deleted on this device and not yet deleted in the cloud. */
+  deleted?: string[];
 }
 
 const now = () => Date.now();
@@ -65,10 +67,14 @@ export function deleteSong(lib: Library, id: string): Library {
   const i = lib.songs.findIndex((s) => s.id === id);
   if (i < 0) return lib;
   const songs = lib.songs.filter((s) => s.id !== id);
-  if (songs.length === 0) return createLibrary();
+  const deleted = [...(lib.deleted ?? []), id];
+  if (songs.length === 0) return { ...createLibrary(), deleted };
   const currentId = lib.currentId === id ? songs[Math.min(i, songs.length - 1)]!.id : lib.currentId;
-  return { currentId, songs };
+  return { currentId, songs, deleted };
 }
+
+/** Forget deletions that have reached the cloud. */
+export const clearDeleted = (lib: Library, ids: string[]): Library => ({ ...lib, deleted: (lib.deleted ?? []).filter((id) => !ids.includes(id)) });
 
 const parse = (text: string | null): unknown => {
   try {
@@ -78,12 +84,14 @@ const parse = (text: string | null): unknown => {
   }
 };
 
+const storedCurrent = (r: Partial<Library>, songs: Song[]) => (typeof r.currentId === 'string' ? r.currentId : songs[0]!.id);
+
 function fromStored(raw: unknown): Library | null {
   const r = raw as Partial<Library> | null;
   if (!r || !Array.isArray(r.songs)) return null;
   const songs = r.songs.map(migrateSong).filter((s): s is Song => s !== null);
   if (songs.length === 0) return null;
-  return { currentId: typeof r.currentId === 'string' ? r.currentId : songs[0]!.id, songs };
+  return { currentId: storedCurrent(r, songs), songs, deleted: Array.isArray(r.deleted) ? r.deleted : [] };
 }
 
 /** Library from storage: the library itself, else the single song older versions saved, else a fresh one. */

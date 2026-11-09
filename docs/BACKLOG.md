@@ -14,17 +14,17 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 - ✅ Playback (guitar SoundFont), Chords / Tab / Score views, tempo 25–200%, loop, loop a section of bars, now-playing card, practice mode (hide fingers).
 - ✅ Drums (Basic, Bossa nova, Swing) per time signature; standalone metronome with beat indicator.
 
-## P1 — next
+## P1 — done ✅
 
 | # | Item | Notes |
 |---|---|---|
-| 1 | **Song library** | List, open, rename, duplicate and delete songs. Today **New song replaces the current song**, so work can be lost. |
-| 2 | **Firebase sign-in + sync** | Auth plus Firestore for songs and My chords, with offline cache. Blocked on your Firebase project config in `.env.local`. |
-| 3 | **Transpose up/down** | Semitone buttons; keep shapes with a capo suggestion, or re-voice. Logic exists (`transposeChord`, `capoFor`); UI missing. |
-| 4 | **Change key** | Respell the chords for the new key and suggest new fingerings. Logic exists (`changeKey`, `suggestVoicings`); UI missing. |
-| 5 | **Undo / redo** | Song edits, drag and drop, deletes. |
-| 6 | **Show player errors** | Errors are captured (`usePlayer.error`) but never displayed. |
-| 7 | **Auto-scroll the chord view during playback** | Keep the current bar on screen. Tab and score already follow the cursor. |
+| 1 | ✅ Song library | My songs: open, rename, duplicate, delete (with confirmation); New song adds a song. |
+| 2 | ✅ Firebase sign-in + sync | Email/password and Google; songs and My chords; newest edit wins; deletes sync; live updates; offline cache. **Turns on once your config is in `.env.local`** (see `.env.example`), with rules in `firestore.rules`. |
+| 3 | ✅ Transpose | Half steps or pick a key; new shapes or same shapes + capo; capo suggestions. |
+| 4 | ✅ Change key | Respells chords and re-voices fingerings. |
+| 5 | ✅ Undo / redo | Buttons and Ctrl/⌘+Z, Shift+Ctrl/⌘+Z. |
+| 6 | ✅ Playback errors | Shown above the transport, dismissable. |
+| 7 | ✅ Auto-scroll | The playing bar stays on screen. |
 
 ## P2 — important
 
