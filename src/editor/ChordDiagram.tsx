@@ -54,7 +54,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
   return (
     <svg
       ref={svgRef}
-      className={`diagram${drag ? ` is-${drag.mode}` : ''}`}
+      className={`diagram${drag ? ` is-${drag.mode}` : ''}${state.refusal ? ' is-refused' : ''}`}
       viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
       role="application"
       aria-label="Chord diagram. Tap a cell to place a finger; arrow keys move the selected finger; Shift plus left or right arrow stretches it into a barre."
@@ -236,7 +236,7 @@ function Dots({ state, drag, onTap, onPointerDown }: DotsProps) {
               <circle className="dot-ring" r={G.dotRadius + 5} />
               <circle className="dot-fill" r={G.dotRadius} />
               <text className="dot-label" dominantBaseline="central" textAnchor="middle">
-                {fingerLabel(d.finger)}
+                {labelled(d, visible) ? fingerLabel(d.finger) : ''}
               </text>
             </g>
           </g>
@@ -245,6 +245,10 @@ function Dots({ state, drag, onTap, onPointerDown }: DotsProps) {
     </g>
   );
 }
+
+/** A barre shows its finger number once, on its lowest string, like a printed chart. */
+const labelled = (d: FretDot, dots: FretDot[]) =>
+  !dots.some((o) => o.finger === d.finger && o.fret === d.fret && o.string < d.string);
 
 function DragGhost({ drag, shape }: { drag: DragState; shape: ChordShape }) {
   const dot = shape.dots.find((d) => d.string === drag.from);

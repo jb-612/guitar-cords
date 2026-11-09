@@ -159,6 +159,21 @@ function moveSingle(shape: ChordShape, dot: FretDot, to: { string: number; fret:
   });
 }
 
+export type Refusal = 'under-barre' | 'occupied' | 'off-board';
+
+/** Why a finger can't go to `to` (moving from `fromString`, if it is a move), or null if it can. */
+export function placementProblem(shape: ChordShape, to: { string: number; fret: number }, fromString?: number): Refusal | null {
+  if (!onBoard(to)) return 'off-board';
+  if (underBarre(shape, to.string, to.fret)) return 'under-barre';
+  return takenByOther(shape, to.string, fromString) ? 'occupied' : null;
+}
+
+/** Another finger (not a barre piece, not the one being moved) is on this string. */
+function takenByOther(shape: ChordShape, string: number, fromString?: number): boolean {
+  const target = dotOn(shape, string);
+  return !!target && target.string !== fromString && !barreOf(shape, target);
+}
+
 /** Lift a finger. Removing any piece of a barre lifts the whole barre. */
 export function removeDot(shape: ChordShape, string: number): ChordShape {
   const dot = dotOn(shape, string);

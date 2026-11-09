@@ -15,6 +15,8 @@ import {
   viewStartFret,
   type ChordShape,
   type Finger,
+  placementProblem,
+  type Refusal,
 } from '../music/chordShape';
 
 export const MAX_START_FRET = 15;
@@ -25,6 +27,8 @@ export interface EditorState {
   startFret: number;
   /** String index of the selected dot. */
   selected: number | null;
+  /** Why the last tap, drag or nudge was refused (cleared by the next action). */
+  refusal?: Refusal | null;
 }
 
 export type EditorAction =
@@ -53,17 +57,22 @@ function follow(startFret: number, fret: number): number {
   return startFret;
 }
 
+/** Tapping a dot that isn't selected just selects it. */
+const tapsUnselectedDot = (state: EditorState, string: number, fret: number) =>
+  state.shape.dots.some((d) => d.string === string && d.fret === fret) && state.selected !== string;
+
 function onCell(state: EditorState, string: number, fret: number): EditorState {
-  const dot = state.shape.dots.find((d) => d.string === string);
-  if (dot?.fret === fret && state.selected !== string) return { ...state, selected: string };
+  if (tapsUnselectedDot(state, string, fret)) return { ...state, selected: string };
   const shape = tapString(state.shape, string, fret);
-  const placed = shape.dots.some((d) => d.string === string);
-  return { ...state, shape, selected: placed ? string : null };
+  if (shape === state.shape) return { ...state, refusal: placementProblem(state.shape, { string, fret }) };
+  return { ...state, shape, selected: hasDot(shape, string) ? string : null };
 }
+
+const hasDot = (shape: ChordShape, string: number) => shape.dots.some((d) => d.string === string);
 
 function onMove(state: EditorState, from: number, to: { string: number; fret: number }): EditorState {
   const shape = moveDot(state.shape, from, to);
-  if (shape === state.shape) return state;
+  if (shape === state.shape) return { ...state, refusal: placementProblem(state.shape, to, from) ?? 'occupied' };
   return { shape, selected: to.string, startFret: follow(state.startFret, to.fret) };
 }
 
@@ -94,5 +103,5 @@ const handlers: Handlers = {
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   const handle = handlers[action.type] as (s: EditorState, a: EditorAction) => EditorState;
-  return handle(state, action);
+  return handle({ ...state, refusal: null }, action);
 }

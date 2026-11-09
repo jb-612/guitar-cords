@@ -247,3 +247,20 @@ circle.inlay {
     transform: translateY(-4px);
   }
 }
+
+/* Refused move: a short shake */
+.diagram.is-refused {
+  animation: refuse-shake 320ms var(--ease-out);
+}
+
+@keyframes refuse-shake {
+  20% {
+    transform: translateX(-5px);
+  }
+  45% {
+    transform: translateX(4px);
+  }
+  70% {
+    transform: translateX(-2px);
+  }
+}

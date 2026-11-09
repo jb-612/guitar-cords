@@ -91,7 +91,9 @@ describe('ChordEditor', () => {
     await user.click(cell(6, 1));
     const board = screen.getByRole('application');
     for (let i = 0; i < 5; i++) fireEvent.keyDown(board, { key: 'ArrowRight', shiftKey: true });
-    for (let s = 0; s < 6; s++) expect(screen.getByTestId(`dot-${s}`).textContent).toBe('1');
+    // Like a printed chart, the barre shows its finger number once.
+    expect(screen.getByTestId('dot-0').textContent).toBe('1');
+    for (let s = 1; s < 6; s++) expect(screen.getByTestId(`dot-${s}`).textContent).toBe('');
     expect(screen.getByTestId('barre-1@1')).toBeInTheDocument();
   });
 
@@ -106,6 +108,26 @@ describe('ChordEditor', () => {
     fireEvent.keyDown(board, { key: 'Delete' });
     expect(screen.queryByTestId('dot-0')).toBeNull();
     expect(screen.queryByTestId('dot-2')).toBeNull();
+  });
+
+  it('explains when a finger cannot go under a barre', async () => {
+    const user = userEvent.setup();
+    render(<ChordEditor />);
+    await user.click(cell(6, 2));
+    const board = screen.getByRole('application');
+    for (let i = 0; i < 5; i++) fireEvent.keyDown(board, { key: 'ArrowRight', shiftKey: true });
+    await user.click(cell(3, 1));
+    expect(screen.getByRole('status')).toHaveTextContent(/under the barre/i);
+    expect(board).toHaveClass('is-refused');
+  });
+
+  it('explains when a string already has a finger', async () => {
+    const user = userEvent.setup();
+    render(<ChordEditor />);
+    await user.click(cell(4, 2));
+    await user.click(cell(5, 3));
+    fireEvent.keyDown(screen.getByRole('application'), { key: 'ArrowRight' });
+    expect(screen.getByRole('status')).toHaveTextContent(/already has a finger/i);
   });
 
   it('teaches the barre gesture in the help text', () => {

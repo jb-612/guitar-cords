@@ -7,6 +7,7 @@ import {
   barreTo,
   extendBarre,
   shapeFromFrets,
+  placementProblem,
   toFretString,
   toggleMute,
   shiftShape,
@@ -168,6 +169,26 @@ describe('a barre is one finger', () => {
 
   it('changing the finger of a piece changes the whole barre', () => {
     expect(setFinger(barre(), 4, 2).dots.every((d) => d.finger === 2)).toBe(true);
+  });
+});
+
+describe('placementProblem (why a move is refused)', () => {
+  const barre = () => barreTo(tapAll([[0, 2]]), 0, 5);
+
+  it('under a barre', () => {
+    expect(placementProblem(tapString(barre(), 0, 4), { string: 2, fret: 1 }, 0)).toBe('under-barre');
+  });
+
+  it('a string that already has another finger', () => {
+    expect(placementProblem(tapAll([[1, 3], [2, 2]]), { string: 2, fret: 4 }, 1)).toBe('occupied');
+  });
+
+  it('off the fretboard', () => {
+    expect(placementProblem(tapAll([[1, 1]]), { string: 1, fret: 0 }, 1)).toBe('off-board');
+  });
+
+  it('nothing wrong', () => {
+    expect(placementProblem(tapAll([[1, 3]]), { string: 2, fret: 2 }, 1)).toBeNull();
   });
 });
 

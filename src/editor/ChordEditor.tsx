@@ -71,6 +71,7 @@ export function ChordEditor({ onSave, onCancel, initialKey = '', initialShape, i
       <div className="editor-stage card">
         <NamePanel shape={state.shape} name={displayName} inKey={!!shownCurrent?.inKey} songKey={songKey} />
         <ChordDiagram state={state} dispatch={dispatch} />
+        <RefusalHint refusal={state.refusal} />
         <PositionStepper startFret={state.startFret} dispatch={dispatch} />
       </div>
       <div className="editor-side">
@@ -231,5 +232,19 @@ function Alternatives({ candidates, current, onPick }: { candidates: ChordName[]
         ))}
       </div>
     </div>
+  );
+}
+
+const REFUSALS: Record<string, string> = {
+  'under-barre': "Can't place a finger under the barre — it would be silent.",
+  occupied: 'That string already has a finger. Move or remove it first.',
+  'off-board': "That's off the fretboard.",
+};
+
+function RefusalHint({ refusal }: { refusal?: string | null }) {
+  return (
+    <p className={`refusal-hint${refusal ? ' is-shown' : ''}`} role="status" aria-live="polite">
+      {refusal ? REFUSALS[refusal] : ''}
+    </p>
   );
 }

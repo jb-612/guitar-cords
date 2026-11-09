@@ -308,3 +308,19 @@
     opacity: 0.55;
   }
 }
+
+.refusal-hint {
+  min-height: 20px;
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--danger);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--t-fast), transform var(--t-fast) var(--ease-out);
+}
+
+.refusal-hint.is-shown {
+  opacity: 1;
+  transform: none;
+}

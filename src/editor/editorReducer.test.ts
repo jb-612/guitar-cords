@@ -47,7 +47,7 @@ describe('editorReducer', () => {
 
   it('does not nudge onto a string that already has a dot', () => {
     const before = run([{ type: 'cell', string: 2, fret: 2 }, { type: 'cell', string: 1, fret: 3 }]);
-    expect(editorReducer(before, { type: 'nudge', dString: 1, dFret: 0 })).toBe(before);
+    expect(editorReducer(before, { type: 'nudge', dString: 1, dFret: 0 }).shape).toBe(before.shape);
   });
 
   it('scrolls the fret window to follow a dot nudged past its edge', () => {
@@ -96,5 +96,11 @@ describe('editorReducer', () => {
   it('clears everything', () => {
     const s = run([{ type: 'cell', string: 0, fret: 3 }, { type: 'window', delta: 2 }, { type: 'clear' }]);
     expect(s).toEqual(initialEditorState);
+  });
+
+  it('records why a move was refused, until the next action', () => {
+    const blocked = run([{ type: 'cell', string: 2, fret: 2 }, { type: 'cell', string: 1, fret: 3 }, { type: 'nudge', dString: 1, dFret: 0 }]);
+    expect(blocked.refusal).toBe('occupied');
+    expect(editorReducer(blocked, { type: 'window', delta: 1 }).refusal).toBeNull();
   });
 });
