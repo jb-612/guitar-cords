@@ -294,5 +294,15 @@ describe('song player', () => {
       for (const bar of [1, 2, 0, 1, 2, 0]) engine().emit({ type: 'position', bar, unit: 0 });
       expect(engine().last('setSpeed')).toBe(1);
     });
+
+    it('speed trainer ignores jumps back from repeat signs (only the end of the loop counts)', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: '80' } });
+      const sheet = await openMixer(user);
+      await user.click(within(sheet).getByRole('checkbox', { name: /speed trainer/i }));
+      for (const bar of [0, 1, 0, 1, 2]) engine().emit({ type: 'position', bar, unit: 0 }); // a repeat 1 -> 0
+      expect(engine().last('setSpeed')).toBe(0.8);
+    });
   });
 });

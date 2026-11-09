@@ -4,7 +4,7 @@
  * slots to fill, and each bar has a menu (button, right-click or long-press) for
  * meter/tempo changes and bar insert/delete.
  */
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { ChordThumb } from '../components/ChordThumb';
 import { KeySelect } from '../components/KeySelect';
 import { ChordSymbol } from '../editor/ChordSymbol';
@@ -15,6 +15,7 @@ import type { Player } from '../player/usePlayer';
 import { ViewSwitch } from '../player/ViewSwitch';
 import { COMMON_TIME_SIGNATURES, formatTimeSignature, lengthName, shortLength, unitsOf } from './rhythm';
 import { useBarDrag, type BarDragView } from './useBarDrag';
+import type { BarSelection } from './useBarSelection';
 import { describeKey } from './TransposeSheet';
 import { MAX_CAPO, soundingKey, withCapo } from './transposeSong';
 import { useHitDrag, type DragView } from './useHitDrag';
@@ -42,6 +43,7 @@ interface Props extends SongScreenActions {
   song: Song;
   update: Update;
   player: Player;
+  selection: BarSelection;
 }
 
 export function SongScreen(props: Props) {
@@ -80,7 +82,7 @@ function ScoreHost({ attach, hidden }: { attach: (el: HTMLDivElement | null) => 
 
 const barIdAt = (song: Song, i: number) => song.bars[i]?.id ?? null;
 
-function ChordView({ song, update, player, ...actions }: Props) {
+function ChordView({ song, update, player, selection, ...actions }: Props) {
   const { position, settings, section } = player;
   const drag = useHitDrag(actions.onMoveHit);
   // After a keyboard move, focus follows the moved bar's handle.
@@ -104,6 +106,7 @@ function ChordView({ song, update, player, ...actions }: Props) {
             actions={actions}
             drag={drag}
             reorder={{ count: song.bars.length, move: moveBar, begin: barDrag.begin, view: barDrag.view, focus: focusBar === bar.id }}
+            selection={selection}
             previous={lastHit(song.bars[i - 1])}
             marks={barMarks(i, position?.bar, settings.range, section.anchor)}
             onPick={section.picking ? () => section.pickBar(i) : undefined}
@@ -115,7 +118,9 @@ function ChordView({ song, update, player, ...actions }: Props) {
             <span>Add chord</span>
           </button>
         </li>
+        <PasteTile selection={selection} />
       </ol>
+      {selection.mode && <SelectionBar selection={selection} />}
       {song.bars.length === 0 && <p className="song-empty">Start your progression — pick a chord from the library or draw your own.</p>}
     </>
   );
@@ -248,6 +253,7 @@ interface BarProps {
   actions: SongScreenActions;
   drag: Drag;
   reorder: Reorder;
+  selection: BarSelection;
   /** Last hit of the previous bar, to know whether this bar's first chord is a change. */
   previous?: ChordHit;
   marks: BarMarks;
@@ -328,7 +334,98 @@ function useFollow(current: boolean) {
   return ref;
 }
 
-function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, onPick }: BarProps) {
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function PasteTile({ selection }: { selection: BarSelection }) {
+  if (selection.clipSize === 0) return null;
+  return (
+    <li className="bar add-bar">
+      <button type="button" className="add-chord" onClick={() => selection.paste(Infinity)}>
+        <span className="add-plus" aria-hidden="true">⎘</span>
+        <span>Paste {plural(selection.clipSize, 'bar')}</span>
+      </button>
+    </li>
+  );
+}
+
+/** Actions for the selected bars. */
+function SelectionBar({ selection }: { selection: BarSelection }) {
+  const n = selection.ids.length;
+  return (
+    <div className="selection-bar" role="toolbar" aria-label="Selected bars">
+      <span className="selection-count">{plural(n, 'bar')} selected</span>
+      <button type="button" className="chip-toggle" disabled={n === 0} onClick={selection.copy}>
+        Copy
+      </button>
+      <button type="button" className="chip-toggle" disabled={n === 0} onClick={selection.cut}>
+        Cut
+      </button>
+      {selection.clipSize > 0 && (
+        <button type="button" className="chip-toggle" onClick={() => selection.paste()}>
+          Paste after
+        </button>
+      )}
+      <button type="button" className="chip-toggle danger" disabled={n === 0} onClick={selection.remove}>
+        Delete
+      </button>
+      <button type="button" className="chip-toggle" onClick={selection.done}>
+        Done
+      </button>
+    </div>
+  );
+}
+
+/** Section label, repeat signs and ending brackets on a bar. */
+function StructureMarks({ bar }: { bar: Bar }) {
+  return (
+    <>
+      {bar.section && <span className="bar-section">{bar.section}</span>}
+      {bar.repeatStart && (
+        <span className="repeat-mark start" aria-label="Repeat start">
+          ‖:
+        </span>
+      )}
+      <EndingMarks endings={bar.endings} />
+      <RepeatEnd times={bar.repeatEnd} />
+    </>
+  );
+}
+
+const EndingMarks = ({ endings = [] }: { endings?: number[] }) =>
+  endings.map((n) => (
+    <span key={n} className="ending-mark" aria-label={`${['', '1st', '2nd', '3rd'][n]} ending`}>
+      {n}.
+    </span>
+  ));
+
+function RepeatEnd({ times }: { times?: number }) {
+  if (!times) return null;
+  return (
+    <span className="repeat-mark end" aria-label={`Repeat end, play ${times} times`}>
+      :‖{times > 2 ? ` ×${times}` : ''}
+    </span>
+  );
+}
+
+/** Shift-click selects a range, Ctrl/Cmd-click toggles one bar. */
+const headClick = (selection: BarSelection, id: string) => (e: MouseEvent) => {
+  if (e.shiftKey || e.metaKey || e.ctrlKey) selection.click(id, { shift: e.shiftKey, toggle: true });
+};
+
+function SelectBox({ selection, id, n }: { selection: BarSelection; id: string; n: number }) {
+  if (!selection.mode) return null;
+  return (
+    <input
+      type="checkbox"
+      className="bar-select"
+      aria-label={`Select bar ${n}`}
+      checked={selection.ids.includes(id)}
+      onChange={() => selection.click(id, { shift: false, toggle: true })}
+    />
+  );
+}
+
+function BarCard({ bar, index, update, actions, drag, reorder, selection, previous, marks, onPick }: BarProps) {
   const n = index + 1;
   const ref = useFollow(marks.current);
   const openMenu = () => actions.onBarMenu(index);
@@ -336,7 +433,7 @@ function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, 
   return (
     <li
       ref={ref}
-      className={barClass(marks, reorder.view?.from === index)}
+      className={`${barClass(marks, reorder.view?.from === index)}${selection.ids.includes(bar.id) ? ' is-selected' : ''}`}
       data-bar-index={index}
       aria-label={`Bar ${n}`}
       aria-current={marks.current ? 'true' : undefined}
@@ -349,7 +446,9 @@ function BarCard({ bar, index, update, actions, drag, reorder, previous, marks, 
     >
       {onPick && <button type="button" className="bar-pick" aria-label={`Select bar ${n}`} onClick={onPick} />}
       <DropLine index={index} view={reorder.view} />
-      <header className="bar-head">
+      <StructureMarks bar={bar} />
+      <header className="bar-head" data-testid="bar-head" onClick={headClick(selection, bar.id)}>
+        <SelectBox selection={selection} id={bar.id} n={n} />
         <Grip index={index} reorder={reorder} />
         <span className="bar-number" aria-hidden="true">{n}</span>
         <ChangeMarkers bar={bar} />

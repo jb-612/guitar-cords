@@ -12,6 +12,8 @@ import { ChordPicker } from './song/ChordPicker';
 import { HitSheet } from './song/HitSheet';
 import { barUnits } from './song/rhythm';
 import { applyPattern } from './song/patterns';
+import { setEndings, setRepeatEnd, setRepeatStart, setSection } from './song/structure';
+import { useBarSelection, type BarSelection } from './song/useBarSelection';
 import { SongScreen } from './song/SongScreen';
 import { SongSetup } from './song/SongSetup';
 import { TransposeSheet } from './song/TransposeSheet';
@@ -64,6 +66,37 @@ function undoCommand(e: KeyboardEvent): 'undo' | 'redo' | null {
   return UNDO_KEYS[`${e.shiftKey ? 'shift+' : ''}${e.key.toLowerCase()}`] ?? null;
 }
 
+const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+
+const SELECTION_KEYS: Record<string, (s: BarSelection) => void> = {
+  'mod+c': (s) => s.copy(),
+  'mod+x': (s) => s.cut(),
+  'mod+v': (s) => s.paste(),
+  delete: (s) => s.remove(),
+  backspace: (s) => s.remove(),
+};
+
+const keyName = (e: KeyboardEvent) => `${e.metaKey || e.ctrlKey ? 'mod+' : ''}${e.key.toLowerCase()}`;
+
+function selectionAction(e: KeyboardEvent, selection: BarSelection) {
+  const action = SELECTION_KEYS[keyName(e)];
+  return action && !isTyping(e.target) && selection.ids.length > 0 ? action : null;
+}
+
+/** Copy / cut / paste / delete selected bars from the keyboard (not while typing in a field). */
+function useSelectionKeys(selection: BarSelection) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const action = selectionAction(e, selection);
+      if (!action) return;
+      e.preventDefault();
+      action(selection);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selection]);
+}
+
 /** Ctrl/Cmd+Z undo, Shift+Ctrl/Cmd+Z or Ctrl+Y redo — anywhere in the app. */
 function useUndoKeys(library: LibraryApi) {
   useEffect(() => {
@@ -86,6 +119,8 @@ export function App() {
   const chords = useMyChords();
   const { myChords, remember } = chords;
   const sync = useSync(library, chords);
+  const selection = useBarSelection(song, setSong);
+  useSelectionKeys(selection);
   const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply: Apply = (fn, keepOpen = false) => {
@@ -120,6 +155,7 @@ export function App() {
         song={song}
         update={setSong}
         player={player}
+        selection={selection}
         onAddChord={() => setOverlay({ kind: 'picker' })}
         onRestTap={(restId) => setOverlay({ kind: 'picker', restId })}
         onHitTap={(id) => setOverlay({ kind: 'hit', id })}
@@ -129,7 +165,7 @@ export function App() {
         onTranspose={() => setOverlay({ kind: 'transpose' })}
       />
       <Transport song={song} player={player} onSongChange={setSong} />
-      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} />
+      <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} selection={selection} />
     </div>
   );
 }
@@ -144,6 +180,7 @@ interface OverlayProps {
   apply: Apply;
   library: LibraryApi;
   sync: SyncApi;
+  selection: BarSelection;
 }
 
 type OverlayRenderers = { [K in Overlay['kind']]: (props: OverlayProps, overlay: Extract<Overlay, { kind: K }>) => React.ReactNode };
@@ -257,7 +294,7 @@ function HitOptions({ song, setOverlay, close, apply, id }: OverlayProps & { id:
   );
 }
 
-function BarOptions({ song, close, apply, index }: OverlayProps & { index: number }) {
+function BarOptions({ song, close, apply, selection, index }: OverlayProps & { index: number }) {
   return (
     <Sheet label={`Bar ${index + 1}`} onClose={close}>
       <BarMenu
@@ -269,6 +306,17 @@ function BarOptions({ song, close, apply, index }: OverlayProps & { index: numbe
         onDuplicate={() => apply((s) => duplicateBar(s, index))}
         onMove={(to) => apply((s) => moveBar(s, index, to))}
         onPattern={(id) => apply((s) => applyPattern(s, index, id))}
+        structure={{
+          section: (label) => apply((s) => setSection(s, index, label), true),
+          repeatStart: (on) => apply((s) => setRepeatStart(s, index, on), true),
+          repeatEnd: (times) => apply((s) => setRepeatEnd(s, index, times), true),
+          endings: (list) => apply((s) => setEndings(s, index, list), true),
+        }}
+        onSelect={() => {
+          selection.start(song.bars[index]!.id);
+          close();
+        }}
+        onPaste={selection.clipSize > 0 ? () => (selection.paste(index), close()) : undefined}
         onDelete={() => apply((s) => deleteBar(s, index))}
         onClose={close}
       />

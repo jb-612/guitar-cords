@@ -41,6 +41,14 @@ export interface Bar {
   timeSignature?: TimeSignature;
   /** Tempo change (bpm) starting at this bar. */
   tempo?: number;
+  /** Section starting at this bar ("Verse", "Chorus"…). */
+  section?: string;
+  /** Repeat sign ‖: at the start of this bar. */
+  repeatStart?: boolean;
+  /** Repeat sign :‖ at the end of this bar; how many times the passage is played. */
+  repeatEnd?: number;
+  /** Alternate-ending brackets over this bar (e.g. [1] = 1st ending). */
+  endings?: number[];
 }
 
 export interface Song {
@@ -357,7 +365,7 @@ export function insertBar(song: Song, index: number): Song {
 }
 
 /** A bar with the meter and tempo actually in effect there. */
-interface PlacedBar {
+export interface PlacedBar {
   bar: Bar;
   ts: TimeSignature;
   tempo: number;
@@ -367,7 +375,7 @@ const tsChange = (prev: PlacedBar | undefined, cur: PlacedBar) => (prev && !same
 const tempoChange = (prev: PlacedBar | undefined, cur: PlacedBar) => (prev && prev.tempo !== cur.tempo ? cur.tempo : undefined);
 
 /** Rebuild change markers from each bar's own meter/tempo: a marker only where a bar differs from the one before. */
-function withMarkers(song: Song, placed: PlacedBar[]): Song {
+export function withMarkers(song: Song, placed: PlacedBar[]): Song {
   const bars = placed.map((p, i) => ({ ...p.bar, timeSignature: tsChange(placed[i - 1], p), tempo: tempoChange(placed[i - 1], p) }));
   return { ...song, timeSignature: placed[0]!.ts, tempo: placed[0]!.tempo, bars };
 }
@@ -383,11 +391,16 @@ export function moveBar(song: Song, from: number, to: number): Song {
   return withMarkers(song, placed);
 }
 
+const NO_MARKS = { timeSignature: undefined, tempo: undefined, section: undefined, repeatStart: undefined, repeatEnd: undefined, endings: undefined };
+
+/** Every bar with the meter and tempo in effect there. */
+export const placedBars = (song: Song): PlacedBar[] => song.bars.map((bar, i) => ({ bar, ts: barTimeSignature(song, i), tempo: tempoAt(song, i) }));
+
 /** Copy a bar right after itself (new ids; meter/tempo changes are not repeated). */
 export function duplicateBar(song: Song, index: number): Song {
   const bar = song.bars[index];
   if (!bar) return song;
-  const copy: Bar = { ...bar, id: newId(), timeSignature: undefined, tempo: undefined, events: bar.events.map((e) => ({ ...e, id: newId() })) };
+  const copy: Bar = { ...bar, ...NO_MARKS, id: newId(), events: bar.events.map((e) => ({ ...e, id: newId() })) };
   return normalize({ ...song, bars: [...song.bars.slice(0, index + 1), copy, ...song.bars.slice(index + 1)] });
 }
 

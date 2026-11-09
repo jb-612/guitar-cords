@@ -79,8 +79,18 @@ interface Writer {
   swing: boolean;
 }
 
+/** Section label, repeat signs and alternate endings at the start of a bar. */
+const endingsTex = (endings?: number[]) => (endings?.length ? `\\ae (${endings.join(' ')})` : undefined);
+
+const structureTex = (bar: Bar) => [
+  bar.section ? `\\section ${quoted(bar.section)}` : undefined,
+  bar.repeatStart ? '\\ro' : undefined,
+  endingsTex(bar.endings),
+  bar.repeatEnd ? `\\rc ${bar.repeatEnd}` : undefined,
+];
+
 function barTex(bar: Bar, w: Writer): string {
-  const prefix = [bar.timeSignature && `\\ts ${bar.timeSignature.beats} ${bar.timeSignature.unit}`, bar.tempo && `\\tempo ${bar.tempo}`, w.swing && '\\tf triplet-8th'].filter(Boolean);
+  const prefix = [...structureTex(bar), bar.timeSignature && `\\ts ${bar.timeSignature.beats} ${bar.timeSignature.unit}`, bar.tempo && `\\tempo ${bar.tempo}`, w.swing && '\\tf triplet-8th'].filter(Boolean);
   const body = bar.events.flatMap((e) => {
     if (e.kind === 'rest') return restTex(e.units);
     const changed = voicing(e) !== w.previous;

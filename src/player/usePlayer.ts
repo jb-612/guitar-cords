@@ -113,17 +113,18 @@ function useStandaloneMetronome(on: boolean, bpm: number, song: Song, volume: nu
  * Speed trainer: playback jumping back to an earlier bar means a loop pass finished.
  * Returns a ref'd handler (stable for the engine subscription) fed with each position's bar.
  */
-function useLoopPass(settings: PlayerSettings, setSettings: (fn: (s: PlayerSettings) => PlayerSettings) => void) {
+function useLoopPass(settings: PlayerSettings, loopEnd: number, setSettings: (fn: (s: PlayerSettings) => PlayerSettings) => void) {
   const last = useRef(-1);
-  const trainer = useRef(settings.trainer);
+  const live = useRef({ trainer: settings.trainer, loopEnd });
   const handler = useRef((bar: number) => {
-    const wrapped = bar < last.current;
+    // A pass ends when playback jumps back from the loop's last bar (repeat signs jump back from elsewhere).
+    const wrapped = bar < last.current && last.current === live.current.loopEnd;
     last.current = bar;
-    if (wrapped && trainer.current.on) setSettings((s) => ({ ...s, speed: trainedSpeed(s.speed, s.trainer) }));
+    if (wrapped && live.current.trainer.on) setSettings((s) => ({ ...s, speed: trainedSpeed(s.speed, s.trainer) }));
   });
   useEffect(() => {
-    trainer.current = settings.trainer;
-  }, [settings.trainer]);
+    live.current = { trainer: settings.trainer, loopEnd };
+  }, [settings.trainer, loopEnd]);
   return handler;
 }
 
@@ -139,7 +140,7 @@ export function usePlayer(song: Song) {
   const section = useSectionPicker(setSettings);
   const { drumStyle, drumFills, drumEnding } = settings;
   const tex = useMemo(() => songToAlphaTex(song, { drums: drumStyle, drumFills, drumEnding }), [song, drumStyle, drumFills, drumEnding]);
-  const onLoopPass = useLoopPass(settings, setSettings);
+  const onLoopPass = useLoopPass(settings, settings.range?.to ?? song.bars.length - 1, setSettings);
   const click = useStandaloneMetronome(settings.metronome && !playing, Math.round(song.tempo * settings.speed), song, settings.volumes.metronome);
 
   const ensureEngine = useCallback(() => {

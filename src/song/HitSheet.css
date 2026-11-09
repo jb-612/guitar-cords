@@ -185,3 +185,31 @@
 .transpose .chip-row .name-chip {
   font-weight: 600;
 }
+
+.mixer-check-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mixer-check-inline input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brass-strong);
+}
+
+.mixer-check-inline select {
+  min-height: 32px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.name-chip[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-raised);
+}
