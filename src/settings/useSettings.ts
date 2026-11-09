@@ -2,15 +2,18 @@
 import { createContext, useEffect, useState } from 'react';
 
 export type Theme = 'system' | 'light' | 'dark';
+/** Size of the bars on the song canvas: compact hides the mini diagrams. */
+export type ChordView = 'compact' | 'normal' | 'large';
 
 export interface Settings {
   theme: Theme;
   leftHanded: boolean;
+  chordView: ChordView;
 }
 
 const KEY = 'guitar-cords:settings';
 export const TOUR_KEY = 'guitar-cords:tour-seen';
-const DEFAULTS: Settings = { theme: 'system', leftHanded: false };
+const DEFAULTS: Settings = { theme: 'system', leftHanded: false, chordView: 'normal' };
 
 const read = (key: string) => {
   try {
@@ -35,10 +38,16 @@ function load(): Settings {
   }
 }
 
-/** Light/dark follows the system unless chosen; tokens.css reads data-theme. */
-function applyTheme(theme: Theme) {
-  if (theme === 'system') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
+/** Set a data attribute on <html>, or remove it for the default value. */
+function setRootData(name: 'theme' | 'chordView', value: string, fallback: string) {
+  if (value === fallback) delete document.documentElement.dataset[name];
+  else document.documentElement.dataset[name] = value;
+}
+
+/** Light/dark follows the system unless chosen; tokens.css reads data-theme. SongScreen.css reads data-chord-view. */
+function applyLook(s: Settings) {
+  setRootData('theme', s.theme, 'system');
+  setRootData('chordView', s.chordView, 'normal');
 }
 
 export function useSettings() {
@@ -46,7 +55,7 @@ export function useSettings() {
   const [tourOpen, setTourOpen] = useState(() => read(TOUR_KEY) === null);
   useEffect(() => {
     write(KEY, JSON.stringify(settings));
-    applyTheme(settings.theme);
+    applyLook(settings);
   }, [settings]);
   return {
     settings,

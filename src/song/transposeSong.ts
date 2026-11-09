@@ -11,6 +11,7 @@ import { formatKey, mod12, parseKey, spellingForKey } from '../music/chordSymbol
 import { transposeChord } from '../music/transpose';
 import { suggestVoicings } from '../music/voicings';
 import { isStandard } from '../music/tunings';
+import { shiftNotes } from './notes';
 import type { ChordHit, Song, SongEvent } from './song';
 
 export const MAX_CAPO = 11;
@@ -55,6 +56,7 @@ export function transposeSong(song: Song, n: number): Song {
   const key = song.key ? keyMoved(song.key, n) : null;
   const spelling = spellingForKey(key ?? undefined);
   const move = (e: SongEvent): SongEvent => {
+    if (e.kind === 'notes') return { ...e, notes: shiftNotes(e.notes, n) };
     if (e.kind !== 'chord') return e;
     const symbol = transposeChord(e.symbol, n, spelling);
     return { ...e, symbol, shape: revoice(e, symbol, n, isStandard(song.tuning)) };

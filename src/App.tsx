@@ -45,8 +45,13 @@ import {
   setTimeSignatureFrom,
   type ChordChoice,
   type ChordHit,
+  type NoteEvent,
   type Song,
+  type TabNote,
 } from './song/song';
+import { addNotes, fillRestWithNotes, setNotes } from './song/notes';
+import { NotesSheet } from './song/NotesSheet';
+import { STANDARD_TUNING } from './music/chordShape';
 import { useMyChords } from './song/useMyChords';
 import './App.css';
 
@@ -58,6 +63,7 @@ type Overlay =
   /** Chord editor: a new chord (appended or into a rest), or a new fingering for an existing hit. */
   | { kind: 'editor'; hitId?: string; restId?: string }
   | { kind: 'hit'; id: string }
+  | { kind: 'notes'; restId?: string }
   | { kind: 'bar'; index: number }
   | { kind: 'setup' }
   | { kind: 'library' }
@@ -233,6 +239,7 @@ const OVERLAYS: OverlayRenderers = {
   picker: (p, o) => <PickerSheet {...p} restId={o.restId} />,
   editor: (p, o) => <EditorSheet {...p} hitId={o.hitId} restId={o.restId} />,
   hit: (p, o) => <HitOptions {...p} id={o.id} />,
+  notes: (p, o) => <NewNotesSheet {...p} restId={o.restId} />,
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
   library: (p) => <LibraryOverlay {...p} />,
@@ -287,6 +294,7 @@ function PickerSheet({ song, myChords, setOverlay, close, apply, restId }: Overl
         standardTuning={isStandard(song.tuning)}
         onPick={(choice, units) => apply(placeChord(choice, restId, units))}
         onCreate={() => setOverlay({ kind: 'editor', restId })}
+        onNotes={() => setOverlay({ kind: 'notes', restId })}
         onClose={close}
       />
     </Sheet>
@@ -338,7 +346,43 @@ function EditorSheet({ song, close, apply, remember, hitId, restId }: OverlayPro
   );
 }
 
-function HitOptions({ song, setOverlay, close, apply, id }: OverlayProps & { id: string }) {
+/** Put new notes where the creator asked: into a rest, or at the end of the song. */
+const placeNotes = (notes: TabNote[], restId?: string, units?: number) => (s: Song) =>
+  restId ? fillRestWithNotes(s, restId, notes, units) : addNotes(s, notes, units);
+
+function NewNotesSheet({ song, close, apply, restId }: OverlayProps & { restId?: string }) {
+  return (
+    <Sheet label="Add notes" onClose={close}>
+      <NotesSheet title="Add notes" tuning={song.tuning ?? STANDARD_TUNING} onSave={(notes, units) => apply(placeNotes(notes, restId, units ?? undefined))} onClose={close} />
+    </Sheet>
+  );
+}
+
+function NoteOptions({ song, close, apply, event }: OverlayProps & { event: NoteEvent }) {
+  const id = event.id;
+  return (
+    <Sheet label="Edit notes" onClose={close}>
+      <NotesSheet
+        title="Edit notes"
+        tuning={song.tuning ?? STANDARD_TUNING}
+        initial={event.notes}
+        units={event.units}
+        onSave={(notes, units) => apply((s) => setLength(setNotes(s, id, notes), id, units ?? event.units))}
+        onDuplicate={() => apply((s) => repeatHit(s, id))}
+        onDelete={() => apply((s) => removeEvent(s, id))}
+        onClose={close}
+      />
+    </Sheet>
+  );
+}
+
+function HitOptions(props: OverlayProps & { id: string }) {
+  const at = findEvent(props.song, props.id);
+  if (at?.event.kind === 'notes') return <NoteOptions {...props} event={at.event} />;
+  return <ChordOptions {...props} />;
+}
+
+function ChordOptions({ song, setOverlay, close, apply, id }: OverlayProps & { id: string }) {
   const at = findEvent(song, id);
   if (at?.event.kind !== 'chord') return null;
   const hit: ChordHit = at.event;

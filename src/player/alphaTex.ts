@@ -13,7 +13,8 @@
  */
 import { STRING_COUNT, toFretString, type ChordShape } from '../music/chordShape';
 import { splitUnits, type NotePart } from '../song/rhythm';
-import type { Bar, ChordHit, GuitarSound, Song } from '../song/song';
+import type { Bar, ChordHit, GuitarSound, NoteEvent, Song } from '../song/song';
+import { notesAsHit, soundingHits } from '../song/notes';
 import { drumTrackTex, type DrumStyle } from './drums';
 import { isStandard, tuningTex } from '../music/tunings';
 
@@ -91,6 +92,13 @@ function hitTex(hit: ChordHit, name: string | null): string[] {
   );
 }
 
+/** Riff notes: no strum and no chord name, tied continuations for long notes. */
+function notesTex(e: NoteEvent): string[] {
+  const hit = notesAsHit(e);
+  if (beatsOf(hit) === 0) return restTex(e.units);
+  return splitUnits(e.units).map((p, i) => `(${notes(hit.shape, i === 0 ? noteEffects(hit) : 't')}).${p.value}${effects(p.dotted && 'd')}`);
+}
+
 /** Sounding beats a hit becomes (rests carry no lyrics in alphaTab). */
 function beatsOf(hit: ChordHit): number {
   if (hit.technique !== 'muted' && sounding(hit.shape).length === 0) return 0;
@@ -118,6 +126,7 @@ function barTex(bar: Bar, w: Writer): string {
   const prefix = [...structureTex(bar), bar.timeSignature && `\\ts ${bar.timeSignature.beats} ${bar.timeSignature.unit}`, bar.tempo && `\\tempo ${bar.tempo}`, w.swing && '\\tf triplet-8th'].filter(Boolean);
   const body = bar.events.flatMap((e) => {
     if (e.kind === 'rest') return restTex(e.units);
+    if (e.kind === 'notes') return notesTex(e);
     const changed = voicing(e) !== w.previous;
     w.previous = voicing(e);
     return hitTex(e, changed ? w.names.get(voicing(e))!.name : null);
@@ -132,7 +141,7 @@ const blanks = (n: number) => Array.from({ length: Math.max(0, n) }, () => '+');
  * chord's lyric goes on its first beat; otherwise the bar's line goes on the first beat.
  */
 function barLyrics(bar: Bar): string[] {
-  const hits = bar.events.filter((e): e is ChordHit => e.kind === 'chord');
+  const hits = soundingHits(bar.events);
   if (hits.some((h) => h.lyric)) return hits.flatMap((h) => (beatsOf(h) ? [lyricToken(h.lyric ?? ''), ...blanks(beatsOf(h) - 1)] : []));
   const strums = hits.reduce((n, h) => n + beatsOf(h), 0);
   return strums === 0 ? [] : [lyricToken(bar.lyrics), ...blanks(strums - 1)];

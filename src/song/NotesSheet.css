@@ -1,0 +1,85 @@
+/* Tab entry: six string lines, high E on top, a fret box sitting on each line. */
+.tab-entry {
+  display: grid;
+  gap: 2px;
+  padding: 8px 16px 12px;
+}
+
+.tab-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 52px 28px;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.tab-string {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-line {
+  height: 1px;
+  background: var(--string-plain);
+  opacity: 0.7;
+}
+
+.tab-row:nth-child(n + 4) .tab-line {
+  height: 2px;
+  background: var(--string-wound);
+}
+
+.tab-fret {
+  width: 52px;
+  height: 36px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  text-align: center;
+  transition: border-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
+}
+
+.tab-fret:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px var(--brass-glow);
+}
+
+.tab-fret::placeholder {
+  color: var(--ink-faint);
+}
+
+.tab-pitch {
+  color: var(--brass-strong);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.notes-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+/* Note events in a bar lane. */
+.lane-slot.notes {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--rosewood);
+}
+
+.lane-slot.notes .notes-glyph {
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+.lane-slot.notes .notes-frets {
+  white-space: nowrap;
+  font-size: 16px;
+}

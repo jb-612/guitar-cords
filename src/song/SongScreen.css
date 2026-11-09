@@ -615,3 +615,34 @@
 .capo-row .mini-field select[aria-label='Tuning'] {
   width: 170px;
 }
+
+/* Chord view size (Settings): compact fits more bars, large is easier to read from a distance. */
+:root[data-chord-view='compact'] .bars {
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 6px;
+}
+
+:root[data-chord-view='compact'] .bar {
+  min-height: 92px;
+}
+
+:root[data-chord-view='compact'] .lane-slot .chord-thumb {
+  display: none;
+}
+
+:root[data-chord-view='large'] .bars {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+:root[data-chord-view='large'] .bar {
+  min-height: 190px;
+}
+
+:root[data-chord-view='large'] .lane-slot .chord-thumb {
+  width: 66px;
+}
+
+:root[data-chord-view='large'] .lane-slot .chord-symbol.inline {
+  font-size: 26px;
+}

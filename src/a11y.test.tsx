@@ -29,6 +29,10 @@ describe('accessibility (axe)', () => {
       await u.click(screen.getByRole('button', { name: /^add chord$/i }));
       await u.click(screen.getByRole('button', { name: /create a new chord/i }));
     }],
+    ['tab entry', async (u) => {
+      await u.click(screen.getByRole('button', { name: /^add chord$/i }));
+      await u.click(screen.getByRole('button', { name: /add notes/i }));
+    }],
     ['chord options', async (u) => u.click(screen.getAllByTestId('bar-hit')[0]!)],
     ['bar menu', async (u) => u.click(screen.getByRole('button', { name: 'Bar 1 options' }))],
     ['my songs', async (u) => u.click(screen.getByRole('button', { name: 'My songs' }))],

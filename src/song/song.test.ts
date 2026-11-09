@@ -35,7 +35,7 @@ const addAll = (song: Song, symbols: string[], units?: number) => symbols.reduce
 
 /** Compact picture of the song: "G8 C8 r16 | D32" (symbol or r, then units). */
 const picture = (song: Song) =>
-  song.bars.map((b) => b.events.map((e: SongEvent) => `${e.kind === 'rest' ? 'r' : e.symbol}${e.units}`).join(' ')).join(' | ');
+  song.bars.map((b) => b.events.map((e: SongEvent) => `${e.kind === 'rest' ? 'r' : e.kind === 'notes' ? 'n' : e.symbol}${e.units}`).join(' ')).join(' | ');
 
 const QUARTER = 8;
 const HALF = 16;

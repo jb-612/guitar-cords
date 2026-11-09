@@ -75,3 +75,13 @@ export const shortLength = (units: number) =>
   splitUnits(units)
     .map((p) => `${VALUE_SHORT[p.value]}${p.dotted ? '.' : ''}`)
     .join('+');
+
+/** Lengths offered when adding a chord or notes; null = fill the available space. */
+export const LENGTH_CHOICES: [string, number | null][] = [
+  ['Fill', null],
+  ['Whole', unitsOf(1)],
+  ['Half', unitsOf(2)],
+  ['Quarter', unitsOf(4)],
+  ['Eighth', unitsOf(8)],
+  ['Sixteenth', unitsOf(16)],
+];

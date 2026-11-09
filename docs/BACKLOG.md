@@ -36,31 +36,38 @@ Last updated 2026-11-09. ✅ = done, everything else is open. Priorities: **P1**
 - ✅ Sections, repeats and endings, song-wide capo, multi-select with copy/cut/paste/delete.
 - ✅ Export Guitar Pro / MusicXML / MIDI / song file, print or PDF chord sheet, share links, import.
 
-## P3 — nice to have
+## P3 — done ✅
 
 **Chord editor**
-- Show the barre finger number once instead of on every string (as printed charts do).
-- "Can't go here" shake plus hint when a drop is refused (e.g. under a barre).
-- Markers for fingers outside the visible fret window.
-- Bigger voicing library: 7ths, 9ths, slash chords, inversions, more movable shapes.
-- Alternate tunings (Drop D, DADGAD, open G…) and left-handed mode.
+- ✅ Barre finger number shown once, as printed charts do.
+- ✅ "Can't go here" shake plus hint when a placement is refused (e.g. under a barre).
+- ✅ Markers (↑7 / ↓12) for fingers outside the visible frets; tap one to scroll it into view.
+- ✅ Bigger voicing library: 7ths, 9ths, slash chords, inversions, movable E/A/D shapes.
+- ✅ Alternate tunings (Drop D, half-step down, DADGAD, open G, open D) and left-handed mode.
 
 **Rhythm editing**
-- Per-hit accent, muted "chuck" strum, palm mute.
-- Lyrics aligned to individual beats or syllables, not just per bar.
-- Edit triplets in the guitar part.
-- Note-level tab editing (single notes, riffs, bass lines): the original step 8.
+- ✅ Per-hit accent, muted "chuck" strum, palm mute.
+- ✅ Lyrics per chord (syllables on individual hits), as well as per bar.
+- ✅ Triplet strums.
+- ✅ Note-level tab: single notes and small groups (riffs, bass lines) entered as string + fret, mixed with chords in any bar; length, duplicate, drag, transpose, playback, tab/score and MusicXML all handle them.
 
 **Theory helpers**
-- Change mode (major ↔ relative minor).
-- Show how confident the key suggestion is; offer the second-best key.
-- Roman-numeral view (I–V–vi–IV) for the progression.
+- ✅ Major ↔ relative minor switch.
+- ✅ Key-suggestion confidence and the second-best key.
+- ✅ Roman-numeral view (I–V–vi–IV).
 
 **App**
-- Manual light/dark theme switch (today it follows the system).
-- Compact or zoomed chord view; full-screen performance mode.
-- Accessibility pass: screen reader walkthrough, keyboard navigation across bars and hits.
-- Onboarding: a short first-run walkthrough of tap, hold-to-barre, drag, bar menu.
+- ✅ Light/dark/system theme switch.
+- ✅ Compact / normal / large chord view (Settings); full-screen performance mode.
+- ✅ Accessibility pass: axe checks on every screen and sheet, focus moves into sheets and back, Tab trapped.
+- ✅ First-run walkthrough of tap, hold-to-barre, drag and the bar menu.
+
+## Still open
+
+- **Physical devices**: tested only in iPhone/Pixel emulation.
+- **Code signing / notarisation** for the desktop apps: needs your Apple and Windows certificates.
+- **Firebase**: sync is built but stays offline until `VITE_FIREBASE_*` is set in `.env.local` (see `.env.example`).
+- Tab entry is one event at a time; a fretboard-tap entry mode and techniques (hammer-on, slide, bend) would make riffs faster to write.
 
 ## Out of scope for now
 

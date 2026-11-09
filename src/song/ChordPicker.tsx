@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { ChordThumb } from '../components/ChordThumb';
 import { SheetHeader } from '../components/Sheet';
 import { toFretString } from '../music/chordShape';
-import { unitsOf } from './rhythm';
+import { LENGTH_CHOICES as LENGTHS } from './rhythm';
 import { parseChord } from '../music/chordSymbol';
 import { diatonicChords } from '../music/diatonic';
 import { VOICING_LIBRARY, suggestVoicings, type Voicing } from '../music/voicings';
@@ -23,6 +23,8 @@ interface Props {
   /** `units` is the chosen length; omitted means fill the available space. */
   onPick: (choice: ChordChoice, units?: number) => void;
   onCreate: () => void;
+  /** Enter single notes as tab (riffs, bass lines) instead of a chord. */
+  onNotes?: () => void;
   onClose: () => void;
 }
 
@@ -42,16 +44,8 @@ const withShapes = (symbols: string[]) =>
     return v ? [{ symbol, voicing: v }] : [];
   });
 
-const LENGTHS: [string, number | null][] = [
-  ['Fill', null],
-  ['Whole', unitsOf(1)],
-  ['Half', unitsOf(2)],
-  ['Quarter', unitsOf(4)],
-  ['Eighth', unitsOf(8)],
-  ['Sixteenth', unitsOf(16)],
-];
 
-export function ChordPicker({ songKey, myChords = [], standardTuning = true, onPick: pickChord, onCreate, onClose }: Props) {
+export function ChordPicker({ songKey, myChords = [], standardTuning = true, onPick: pickChord, onCreate, onNotes, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [length, setLength] = useState<number | null>(null);
   const q = query.trim();
@@ -86,11 +80,7 @@ export function ChordPicker({ songKey, myChords = [], standardTuning = true, onP
       ) : (
         <Library songKey={songKey} mine={myChords.map(asItem)} onPick={onPick} standard={standardTuning} />
       )}
-      <div className="picker-footer">
-        <button type="button" className="btn ghost create-btn" onClick={onCreate}>
-          <span aria-hidden="true">＋</span> Create a new chord
-        </button>
-      </div>
+      <PickerFooter onCreate={onCreate} onNotes={onNotes} />
     </div>
   );
 }
@@ -110,6 +100,21 @@ function StandardLibrary({ songKey, onPick }: { songKey: string | null; onPick: 
       {songKey && <ChordGroup label={`In the key of ${songKey}`} items={withShapes(diatonicChords(songKey))} onPick={onPick} featured />}
       <ChordGroup label="Common chords" items={withShapes(COMMON)} onPick={onPick} />
     </>
+  );
+}
+
+function PickerFooter({ onCreate, onNotes }: { onCreate: () => void; onNotes?: () => void }) {
+  return (
+    <div className="picker-footer">
+      <button type="button" className="btn ghost create-btn" onClick={onCreate}>
+        <span aria-hidden="true">＋</span> Create a new chord
+      </button>
+      {onNotes && (
+        <button type="button" className="btn ghost create-btn" onClick={onNotes}>
+          <span aria-hidden="true">♪</span> Add notes (riff or bass line)
+        </button>
+      )}
+    </div>
   );
 }
 

@@ -18,6 +18,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.removeItem('guitar-cords:tour-seen');
   delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.chordView;
 });
 
 describe('settings', () => {
@@ -35,6 +36,23 @@ describe('settings', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
     await user.click(within(await openSettings(user)).getByRole('radio', { name: 'System' }));
     expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it('makes the chord view compact or large, and remembers it', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<App />);
+    await skipTour(user);
+    const sheet = await openSettings(user);
+    expect(within(sheet).getByRole('radio', { name: 'Normal' })).toBeChecked();
+    await user.click(within(sheet).getByRole('radio', { name: 'Compact' }));
+    expect(document.documentElement.dataset.chordView).toBe('compact');
+    unmount();
+    render(<App />);
+    expect(document.documentElement.dataset.chordView).toBe('compact');
+    await user.click(within(await openSettings(user)).getByRole('radio', { name: 'Large' }));
+    expect(document.documentElement.dataset.chordView).toBe('large');
+    await user.click(within(screen.getByRole('dialog', { name: 'Settings' })).getByRole('radio', { name: 'Normal' }));
+    expect(document.documentElement.dataset.chordView).toBeUndefined();
   });
 
   it('left-handed mode mirrors chord diagrams', async () => {

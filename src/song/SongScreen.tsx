@@ -22,8 +22,11 @@ import { MAX_CAPO, soundingKey, withCapo } from './transposeSong';
 import { useHitDrag, type DragView } from './useHitDrag';
 import { relativeKey, romanNumeral } from '../music/roman';
 import { suggestKeys } from '../music/keyDetection';
-import { chordSymbols, setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
+import { chordSymbols, setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type NoteEvent, type Song, type SongEvent } from './song';
+import { notesLabel } from './notes';
+import { STRING_COUNT } from '../music/chordShape';
 import './SongScreen.css';
+import './NotesSheet.css';
 
 /** Edit the song; a `tag` merges quick repeated edits (typing) into one undo step. */
 type Update = (fn: (s: Song) => Song, tag?: string) => void;
@@ -545,6 +548,7 @@ function Lane({ events, previous, actions, drag, numeralKey }: LaneProps) {
       {events.map((e, i) => {
         const dnd = dndFor(drag.view, e.id);
         if (e.kind === 'rest') return <RestSlot key={e.id} id={e.id} units={e.units} dnd={dnd} onTap={tap(() => actions.onRestTap(e.id))} />;
+        if (e.kind === 'notes') return <NotesSlot key={e.id} event={e} dnd={dnd} onTap={tap(() => actions.onHitTap(e.id))} onPointerDown={(ev) => drag.onSlotPointerDown(ev, e.id, notesSymbol(e))} />;
         const before = previousHit(events, i, previous);
         return (
           <HitSlot
@@ -666,6 +670,32 @@ function Numeral({ value }: { value: string | null | false }) {
       {value}
     </span>
   ) : null;
+}
+
+const notesSymbol = (e: NoteEvent) => `♪ ${notesLabel(e)}`;
+const notesDescription = (e: NoteEvent) => e.notes.map((n) => `string ${STRING_COUNT - n.string} fret ${n.fret}`).join(' and ');
+
+interface NotesSlotProps {
+  event: NoteEvent;
+  dnd: Dnd;
+  onTap: () => void;
+  onPointerDown: (e: PointerEvent) => void;
+}
+
+/** Riff or bass notes in a lane, shown as their frets. */
+function NotesSlot({ event, dnd, onTap, onPointerDown }: NotesSlotProps) {
+  const cls = ['lane-slot notes', dnd.dropTarget && 'is-drop-target', dnd.dragging && 'is-dragging'].filter(Boolean).join(' ');
+  return (
+    <button type="button" className={cls} data-slot-id={event.id} data-testid="bar-notes" data-symbol={notesSymbol(event)} aria-label={`Notes: ${notesDescription(event)}, ${lengthName(event.units)}`} style={{ flexGrow: event.units }} onPointerDown={onPointerDown} onClick={onTap}>
+      <span className="notes-glyph" aria-hidden="true">
+        ♪
+      </span>
+      <span className="notes-frets">{notesLabel(event)}</span>
+      <span className="hit-len" aria-hidden="true">
+        {shortLength(event.units)}
+      </span>
+    </button>
+  );
 }
 
 function RestSlot({ id, units, dnd, onTap }: { id: string; units: number; dnd: Dnd; onTap: () => void }) {

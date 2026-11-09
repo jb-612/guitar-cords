@@ -87,6 +87,7 @@ export function ChordDiagram({ state, dispatch }: Props) {
         onTap={(d) => tap({ type: 'cell', string: d.string, fret: d.fret })}
         onPointerDown={onDotPointerDown}
       />
+      <OffWindow shape={state.shape} startFret={state.startFret} onShow={(delta) => tap({ type: 'window', delta })} />
       {drag?.mode === 'move' && <DragGhost drag={drag} shape={state.shape} />}
       </g>
     </svg>
@@ -252,6 +253,37 @@ function Dots({ state, drag, onTap, onPointerDown }: DotsProps) {
                 {labelled(d, visible) ? fingerLabel(d.finger) : ''}
               </text>
             </g>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** How far the window must scroll to show `fret`: negative = towards the nut (above), positive = below, 0 = in view. */
+const scrollToShow = (fret: number, startFret: number) => {
+  if (fret < startFret) return fret - startFret;
+  return Math.max(0, fret - (startFret + VISIBLE_FRETS - 1));
+};
+
+/** Small arrow markers on strings whose finger is outside the visible frets; tapping one scrolls it into view. */
+function OffWindow({ shape, startFret, onShow }: { shape: ChordShape; startFret: number; onShow: (delta: number) => void }) {
+  const hidden = shape.dots.map((d) => ({ d, delta: scrollToShow(d.fret, startFret) })).filter((x) => x.delta !== 0);
+  return (
+    <g className="off-window">
+      {hidden.map(({ d, delta }) => {
+        const above = delta < 0;
+        return (
+          <g
+            key={d.string}
+            role="button"
+            className={`off-marker${above ? ' is-above' : ''}`}
+            aria-label={`Finger ${fingerLabel(d.finger)} on string ${stringNumber(d.string)} at fret ${d.fret} is ${above ? 'above' : 'below'} the view — show it`}
+            transform={`translate(${stringX(d.string)} ${above ? G.top + 13 : fretY(VISIBLE_FRETS) + 15})`}
+            onClick={() => onShow(delta)}
+          >
+            <rect x={-15} y={-10} width={30} height={20} rx={10} />
+            <text dominantBaseline="central" textAnchor="middle">{`${above ? '↑' : '↓'}${d.fret}`}</text>
           </g>
         );
       })}

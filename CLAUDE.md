@@ -35,6 +35,7 @@ npm run test:mobile    # with the dev server running: iPhone + Pixel emulation t
   - Bars hold *events*, either chord hits or rests, with lengths in **units of a 1/32 note**, so every time signature divides exactly.
   - Invariant: **every bar's events add up exactly to its time signature.** Unused time is an explicit rest that the creator can fill. Model functions keep this true: `tidy` merges rests, `refit` pads or trims, `normalize` refits all bars after meter changes, `makeRoom`/`consume` make room or take time.
   - Hits carry `direction` (down/up), `style` (strum/arpeggio) and `sustain` (ring/cut).
+  - **Note events** (`kind: 'notes'`, `notes.ts`) hold riff/bass notes as `{string, fret}` (one per string). They sit in bars next to chord hits; `setLength`, `repeatHit`, `moveHit`, `removeEvent` work on any sounding event (`SoundingEvent`). Exports treat them as nameless hits via `notesAsHit` (no strum, no chord name); `transposeSong` shifts their frets.
   - Bars may carry `timeSignature` / `tempo` changes that apply from that bar until the next change. Bar 0's values live on the song itself (`barTimeSignature`, `tempoAt`).
   - Notation (dotted or tied note values) is derived only at export (`splitUnits`).
   - `migrateSong` upgrades songs stored in the old beats-per-chord format; `useStoredSong` runs it on load.

@@ -271,3 +271,33 @@ circle.inlay {
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* Fingers outside the visible frets: a small pill on their string pointing the way. */
+.off-marker {
+  cursor: pointer;
+  animation: off-marker-in var(--t-med) var(--ease-spring);
+}
+
+.off-marker rect {
+  fill: var(--paper-raised);
+  stroke: var(--brass);
+  stroke-width: 1.2;
+}
+
+.off-marker text {
+  fill: var(--brass-strong);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.off-marker:hover rect {
+  fill: var(--brass-glow);
+}
+
+@keyframes off-marker-in {
+  from {
+    opacity: 0;
+  }
+}

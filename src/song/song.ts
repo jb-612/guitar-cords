@@ -39,7 +39,24 @@ export interface RestEvent {
   units: number;
 }
 
-export type SongEvent = ChordHit | RestEvent;
+/** One fretted (or open) note in a riff: string 0 = low E. */
+export interface TabNote {
+  string: number;
+  fret: number;
+}
+
+/** Single notes or a few notes together (riffs, bass lines), at most one per string. */
+export interface NoteEvent {
+  id: string;
+  kind: 'notes';
+  notes: TabNote[];
+  units: number;
+  sustain?: Sustain;
+}
+
+/** Anything that sounds: a chord hit or notes. */
+export type SoundingEvent = ChordHit | NoteEvent;
+export type SongEvent = SoundingEvent | RestEvent;
 
 export interface Bar {
   id: string;
@@ -224,14 +241,25 @@ const chordAt = (song: Song, id: string) => {
   return at?.event.kind === 'chord' ? (at as EventLocation & { event: ChordHit }) : null;
 };
 
+type SoundingAt = EventLocation & { event: SoundingEvent };
+const soundingAt = (song: Song, id: string) => {
+  const at = findEvent(song, id);
+  return at && at.event.kind !== 'rest' ? (at as SoundingAt) : null;
+};
+
 // --- Adding and editing -----------------------------------------------------
 
 /** Put a chord into a rest, filling it (or the first `units` of it). */
 export function fillRest(song: Song, restId: string, choice: ChordChoice, units?: number): Song {
+  return placeInRest(song, restId, (len, start) => newHit(choice, len, start), units);
+}
+
+/** Put a new event (made for its length and start) into a rest, filling it or the first `units` of it. */
+export function placeInRest(song: Song, restId: string, make: (units: number, start: number) => SoundingEvent, units?: number): Song {
   const at = findEvent(song, restId);
   if (at?.event.kind !== 'rest') return song;
   const len = Math.min(units ?? at.event.units, at.event.units);
-  return editAt(song, at, (before, r, after) => [...before, newHit(choice, len, at.start), rest(r.units - len), ...after]);
+  return editAt(song, at, (before, r, after) => [...before, make(len, at.start), rest(r.units - len), ...after]);
 }
 
 /** The rest that ends the last bar, if a chord of `units` (or any length, when omitted) fits in it. */
@@ -245,15 +273,20 @@ function trailingRest(song: Song, units?: number): RestEvent | null {
 
 /** Append a chord: into the rest that ends the last bar if it fits, otherwise into a new bar. With no length it fills the space. */
 export function addChord(song: Song, choice: ChordChoice, units?: number): Song {
+  return appendEvent(song, (len, start) => newHit(choice, len, start), units);
+}
+
+/** Append a new event: into the rest that ends the last bar if it fits, otherwise into a new bar. */
+export function appendEvent(song: Song, make: (units: number, start: number) => SoundingEvent, units?: number): Song {
   const tail = trailingRest(song, units);
-  if (tail) return fillRest(song, tail.id, choice, units);
+  if (tail) return placeInRest(song, tail.id, make, units);
   const withBar = insertBar(song, song.bars.length);
-  return fillRest(withBar, withBar.bars[withBar.bars.length - 1]!.events[0]!.id, choice, units);
+  return placeInRest(withBar, withBar.bars[withBar.bars.length - 1]!.events[0]!.id, make, units);
 }
 
 /** Change a chord's length. Shorter leaves a rest after it; longer takes time from what follows; never past the bar end. */
 export function setLength(song: Song, id: string, units: number): Song {
-  const at = chordAt(song, id);
+  const at = soundingAt(song, id);
   if (!at) return song;
   const len = Math.max(1, Math.min(units, capacity(song, at.barIndex) - at.start));
   const delta = len - at.event.units;
@@ -273,20 +306,24 @@ export function removeEvent(song: Song, id: string): Song {
 
 /** Insert a copy right after a hit (strumming patterns). Later hits move along into the rest that follows; a full bar continues in a new bar. */
 export function repeatHit(song: Song, id: string): Song {
-  const at = chordAt(song, id);
+  const at = soundingAt(song, id);
   if (!at) return song;
   const space = capacity(song, at.barIndex) - at.start - at.event.units;
   if (space === 0) return repeatIntoNewBar(song, at);
-  const copy: ChordHit = { ...at.event, id: newId(), units: Math.min(at.event.units, space), direction: defaultDirection(at.start + at.event.units) };
+  const copy = copyOf(at.event, Math.min(at.event.units, space), at.start + at.event.units);
   return editAt(song, at, (before, e, after) => [...before, e, copy, ...makeRoom(after, copy.units)]);
 }
 
-function repeatIntoNewBar(song: Song, at: EventLocation & { event: ChordHit }): Song {
+/** A copy with a new id and length; a chord copy strums in the direction its new position suggests. */
+function copyOf(e: SoundingEvent, units: number, start: number): SoundingEvent {
+  const base = { ...e, id: newId(), units };
+  return e.kind === 'chord' ? { ...(base as ChordHit), direction: defaultDirection(start) } : base;
+}
+
+function repeatIntoNewBar(song: Song, at: SoundingAt): Song {
   const withBar = insertBar(song, at.barIndex + 1);
   const restId = withBar.bars[at.barIndex + 1]!.events[0]!.id;
-  const filled = fillRest(withBar, restId, at.event, at.event.units);
-  const copy = filled.bars[at.barIndex + 1]!.events[0]!;
-  return setHitStyle(filled, copy.id, { style: at.event.style, sustain: at.event.sustain });
+  return placeInRest(withBar, restId, (len, start) => copyOf(at.event, len, start), at.event.units);
 }
 
 const voicingKey = (h: ChordHit) => `${h.symbol}|${toFretString(h.shape)}`;
@@ -322,27 +359,33 @@ export function sameVoicingCount(song: Song, id: string): number {
  * Onto another hit: the two chords swap, each slot keeping its rhythm. `copy` keeps the original.
  */
 export function moveHit(song: Song, id: string, targetId: string, opts: { copy?: boolean } = {}): Song {
-  const from = chordAt(song, id);
+  const from = soundingAt(song, id);
   const to = dropTarget(song, id, targetId);
   if (!from || !to) return song;
   const copy = opts.copy === true;
-  return to.event.kind === 'rest' ? moveIntoRest(song, from.event, to, copy) : swapChords(song, from.event, to.event, copy);
+  return to.event.kind === 'rest' ? moveIntoRest(song, from.event, to, copy) : swapEvents(song, from.event, to.event, copy);
 }
 
 const dropTarget = (song: Song, id: string, targetId: string) => (id === targetId ? null : findEvent(song, targetId));
 
-function moveIntoRest(song: Song, hit: ChordHit, to: EventLocation, copy: boolean): Song {
+function moveIntoRest(song: Song, hit: SoundingEvent, to: EventLocation, copy: boolean): Song {
   const units = Math.min(hit.units, to.event.units);
   const placed = editAt(song, to, (before, r, after) => [...before, { ...hit, id: newId(), units }, rest(r.units - units), ...after]);
   return copy ? placed : removeEvent(placed, hit.id);
 }
 
-function swapChords(song: Song, a: ChordHit, b: ChordHit, copy: boolean): Song {
-  const [toB, toA] = [chordOf(a), chordOf(b)];
+function swapEvents(song: Song, a: SoundingEvent, b: SoundingEvent, copy: boolean): Song {
   return mapEvents(song, (e) => {
-    if (e.id === b.id) return { ...e, ...toB };
-    return !copy && e.id === a.id ? { ...e, ...toA } : e;
+    if (e.id === b.id) return takeContent(b, a);
+    return !copy && e.id === a.id ? takeContent(a, b) : e;
   });
+}
+
+/** `slot` keeps its id and rhythm but plays what `from` plays. Chords and notes swap whole when the kinds differ. */
+function takeContent(slot: SoundingEvent, from: SoundingEvent): SoundingEvent {
+  if (slot.kind === 'chord' && from.kind === 'chord') return { ...slot, ...chordOf(from) };
+  if (slot.kind === 'notes' && from.kind === 'notes') return { ...slot, notes: from.notes };
+  return { ...from, id: slot.id, units: slot.units };
 }
 
 export function setLyrics(song: Song, barId: string, lyrics: string): Song {

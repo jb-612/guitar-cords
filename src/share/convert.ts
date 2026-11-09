@@ -8,6 +8,7 @@ import { nameChord } from '../music/chordNaming';
 import { assignFingers, STANDARD_TUNING, STRING_COUNT, type ChordShape } from '../music/chordShape';
 import { parseChord } from '../music/chordSymbol';
 import { songToAlphaTex, type ExportOptions } from '../player/alphaTex';
+import { notesAsHit } from '../song/notes';
 import { splitUnits, unitsOf, type NotePart, type TimeSignature } from '../song/rhythm';
 import { migrateSong, normalizeSong, withMarkers, type Bar, type ChordHit, type GuitarSound, type PlacedBar, type Song, type SongEvent } from '../song/song';
 
@@ -257,17 +258,27 @@ const barline = (location: string, inner: string) => (inner ? `<barline location
 const leftBarline = (bar: Bar) => barline('left', endingXml(bar, 'start') + (bar.repeatStart ? '<repeat direction="forward"/>' : ''));
 const rightBarline = (bar: Bar) => barline('right', endingXml(bar, 'stop') + (bar.repeatEnd ? `<repeat direction="backward" times="${bar.repeatEnd}"/>` : ''));
 
+/** One event's XML. The bar's lyric goes on its first sounding note; chord names only where the voicing changes. */
+function eventXml(song: Song, e: SongEvent, state: { key: string | null; lyric: string | null }): string {
+  if (e.kind === 'rest') return restXml(e.units);
+  const hit = e.kind === 'notes' ? notesAsHit(e) : e;
+  const xml = harmonyFor(hit, state) + hitXml(hit, song.capo ?? 0, state.lyric, song.tuning ?? STANDARD_TUNING);
+  state.lyric = null;
+  return xml;
+}
+
+function harmonyFor(hit: ChordHit, state: { key: string | null }): string {
+  if (!hit.symbol) return '';
+  const key = `${hit.symbol}|${JSON.stringify(hit.shape)}`;
+  const changed = key !== state.key;
+  state.key = key;
+  return changed ? harmonyXml(hit.symbol) : '';
+}
+
 function measureXml(song: Song, bar: Bar, i: number, prev: { key: string | null }): string {
-  let lyric: string | null = bar.lyrics.trim() || null;
-  const events = bar.events.map((e) => {
-    if (e.kind === 'rest') return restXml(e.units);
-    const key = `${e.symbol}|${JSON.stringify(e.shape)}`;
-    const harmony = key !== prev.key ? harmonyXml(e.symbol) : '';
-    prev.key = key;
-    const xml = harmony + hitXml(e, song.capo ?? 0, lyric, song.tuning ?? STANDARD_TUNING);
-    lyric = null;
-    return xml;
-  });
+  const state = { key: prev.key, lyric: bar.lyrics.trim() || null };
+  const events = bar.events.map((e) => eventXml(song, e, state));
+  prev.key = state.key;
   const tempo = tempoXml(i === 0 ? song.tempo : bar.tempo);
   return `<measure number="${i + 1}">${leftBarline(bar)}${attributesXml(i, song, bar)}${sectionXml(bar.section)}${tempo}${events.join('')}${rightBarline(bar)}</measure>`;
 }

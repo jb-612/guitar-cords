@@ -1,12 +1,18 @@
 /** Settings: theme, left-handed diagrams, and the tips walkthrough. */
 import { SheetHeader } from '../components/Sheet';
-import type { SettingsApi, Theme } from './useSettings';
+import type { ChordView, SettingsApi, Theme } from './useSettings';
 import '../song/HitSheet.css';
 
 const THEMES: [Theme, string][] = [
   ['system', 'System'],
   ['light', 'Light'],
   ['dark', 'Dark'],
+];
+
+const CHORD_VIEWS: [ChordView, string][] = [
+  ['compact', 'Compact'],
+  ['normal', 'Normal'],
+  ['large', 'Large'],
 ];
 
 export function SettingsSheet({ settings, onClose }: { settings: SettingsApi; onClose: () => void }) {
@@ -19,6 +25,13 @@ export function SettingsSheet({ settings, onClose }: { settings: SettingsApi; on
         <div className="seg" role="radiogroup" aria-label="Theme">
           {THEMES.map(([theme, label]) => (
             <button key={theme} type="button" role="radio" aria-checked={s.theme === theme} onClick={() => update({ theme })}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="seg" role="radiogroup" aria-label="Chord view size">
+          {CHORD_VIEWS.map(([size, label]) => (
+            <button key={size} type="button" role="radio" aria-checked={s.chordView === size} onClick={() => update({ chordView: size })}>
               {label}
             </button>
           ))}
