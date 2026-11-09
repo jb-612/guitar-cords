@@ -20,7 +20,7 @@ async function run(win) {
     const G = { dots: [{string:0,fret:3,finger:2},{string:1,fret:2,finger:1},{string:5,fret:3,finger:3}], muted: [] };
     const C = { dots: [{string:1,fret:3,finger:3},{string:2,fret:2,finger:2},{string:4,fret:1,finger:1}], muted: [0] };
     const bar = (symbol, shape) => ({ id: id(), lyrics: '', events: [{ id: id(), kind: 'chord', symbol, shape, units: 32, direction: 'down', style: 'strum', sustain: 'ring' }] });
-    const song = { id: id(), title: 'Self test', key: 'G', tempo: 240, timeSignature: { beats: 4, unit: 4 }, bars: [bar('G', G), bar('C', C), bar('G', G)] };
+    const song = { id: id(), title: 'Self test', key: 'G', tempo: 240, timeSignature: { beats: 4, unit: 4 }, bars: [G, C, G, C, G, C, G, C].map((shape, i) => bar(i % 2 ? 'C' : 'G', shape)) };
     localStorage.setItem('guitar-cords:library', JSON.stringify({ currentId: song.id, songs: [song] }));
     location.reload();
   })()`);
