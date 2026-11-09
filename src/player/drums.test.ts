@@ -87,4 +87,38 @@ describe('drum track', () => {
   it('adds nothing for an empty song', () => {
     expect(parse(createSong(), 'basic').tracks).toHaveLength(1);
   });
+
+  describe('fills, crash and ending', () => {
+    const CRASH = 57;
+    const TOMS = [50, 48, 47, 45, 43, 41];
+    const eight = () => withChords({ beats: 4, unit: 4 }, 8);
+    const parseWith = (opts: { fills?: boolean; ending?: boolean }) =>
+      at.importer.ScoreLoader.loadAlphaTex(songToAlphaTex(eight(), { drums: 'basic', drumFills: opts.fills, drumEnding: opts.ending }));
+
+    it('plays a fill at the end of every 4-bar phrase and a crash after it', () => {
+      const score = parseWith({ fills: true });
+      expect(hitsIn(score, 3).flat().some((n) => TOMS.includes(n))).toBe(true);
+      expect(hitsIn(score, 2).flat().some((n) => TOMS.includes(n))).toBe(false);
+      expect(hitsIn(score, 4)[0]).toContain(CRASH);
+      expect(hitsIn(score, 0)[0]).toContain(CRASH);
+    });
+
+    it('ends with one crash on the last downbeat', () => {
+      const last = hitsIn(parseWith({ ending: true }), 7);
+      expect(last[0]).toContain(CRASH);
+      expect(last.slice(1).every((b) => b.length === 0)).toBe(true);
+    });
+
+    it('fills and endings keep every bar full, also in swing and 6/8', () => {
+      for (const style of ['basic', 'bossa', 'swing'] as const) {
+        for (const ts of [{ beats: 4, unit: 4 }, { beats: 6, unit: 8 }] as TimeSignature[]) {
+          const song = withChords(ts, 8);
+          const score = at.importer.ScoreLoader.loadAlphaTex(songToAlphaTex(song, { drums: style, drumFills: true, drumEnding: true }));
+          for (const bar of drumTrack(score).staves[0]!.bars) {
+            expect(bar.voices[0]!.beats.reduce((n, b) => n + b.playbackDuration, 0)).toBe(bar.masterBar.calculateDuration());
+          }
+        }
+      }
+    });
+  });
 });

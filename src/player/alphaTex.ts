@@ -13,7 +13,7 @@
  */
 import { STRING_COUNT, toFretString, type ChordShape } from '../music/chordShape';
 import { splitUnits, type NotePart } from '../song/rhythm';
-import type { Bar, ChordHit, Song } from '../song/song';
+import type { Bar, ChordHit, GuitarSound, Song } from '../song/song';
 import { drumTrackTex, type DrumStyle } from './drums';
 
 /** Quotes would end the alphaTex string; swap in typographic ones. */
@@ -76,10 +76,11 @@ interface Writer {
   names: Map<string, { name: string; shape: ChordShape }>;
   /** Voicing of the previous hit, to name chords only where they change. */
   previous: string | null;
+  swing: boolean;
 }
 
 function barTex(bar: Bar, w: Writer): string {
-  const prefix = [bar.timeSignature && `\\ts ${bar.timeSignature.beats} ${bar.timeSignature.unit}`, bar.tempo && `\\tempo ${bar.tempo}`].filter(Boolean);
+  const prefix = [bar.timeSignature && `\\ts ${bar.timeSignature.beats} ${bar.timeSignature.unit}`, bar.tempo && `\\tempo ${bar.tempo}`, w.swing && '\\tf triplet-8th'].filter(Boolean);
   const body = bar.events.flatMap((e) => {
     if (e.kind === 'rest') return restTex(e.units);
     const changed = voicing(e) !== w.previous;
@@ -104,18 +105,24 @@ const header = (song: Song) => [
   '.',
   '\\track "Guitar"',
   '\\staff {score tabs}',
-  '\\instrument acousticguitarsteel',
+  `\\instrument ${INSTRUMENTS[song.sound ?? 'steel']}`,
   ...(song.capo ? [`\\capo ${song.capo}`] : []),
 ];
+
+const INSTRUMENTS: Record<GuitarSound, string> = { steel: 'acousticguitarsteel', nylon: 'acousticguitarnylon', electric: 'electricguitarclean' };
 
 export interface ExportOptions {
   /** Add a drum track in this style (it can be muted live in the player). */
   drums?: DrumStyle;
+  /** Drum fill at the end of every 4-bar phrase, with a crash after it. */
+  drumFills?: boolean;
+  /** Finish the drums with a crash on the last downbeat. */
+  drumEnding?: boolean;
 }
 
 export function songToAlphaTex(song: Song, options: ExportOptions = {}): string {
   const names = diagramNames(song);
-  const writer: Writer = { names, previous: null };
+  const writer: Writer = { names, previous: null, swing: song.swing === true };
   const body = song.bars.length ? song.bars.map((b) => barTex(b, writer)).join(' |\n') : 'r.1';
   const lyrics = song.bars.flatMap(barLyrics).join(' ');
   return [
@@ -124,7 +131,7 @@ export function songToAlphaTex(song: Song, options: ExportOptions = {}): string 
     ...(lyrics ? [`\\lyrics ${quoted(lyrics)}`] : []),
     `\\ts ${song.timeSignature.beats} ${song.timeSignature.unit}`,
     body,
-    ...(options.drums ? drumTrackTex(song, options.drums) : []),
+    ...(options.drums ? drumTrackTex(song, options.drums, { fills: options.drumFills, ending: options.drumEnding }) : []),
   ].join('\n');
 }
 

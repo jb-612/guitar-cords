@@ -114,4 +114,18 @@ describe('songToAlphaTex', () => {
   it('produces a playable empty bar for an empty song', () => {
     expect(staff(song()).bars).toHaveLength(1);
   });
+
+  it.each([
+    ['steel', 25],
+    ['nylon', 24],
+    ['electric', 27],
+  ] as const)('plays the %s guitar sound', (sound, program) => {
+    expect(parse({ ...gcd(), sound }).tracks[0]!.playbackInfo.program).toBe(program);
+  });
+
+  it('can swing the eighths', () => {
+    const bars = parse({ ...gcd(), swing: true }).masterBars;
+    expect(bars.every((b) => b.tripletFeel === at.model.TripletFeel.Triplet8th)).toBe(true);
+    expect(parse(gcd()).masterBars[0]!.tripletFeel).toBe(at.model.TripletFeel.NoTripletFeel);
+  });
 });

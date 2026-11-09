@@ -39,6 +39,8 @@ export function clicksBetween({ bpm, ts, start, from, to }: ClickWindow): Click[
 export interface MetronomeSettings {
   bpm: number;
   ts: TimeSignature;
+  /** 0..1, default 0.8. */
+  volume?: number;
 }
 
 export interface Metronome {
@@ -52,11 +54,11 @@ const LOOKAHEAD_S = 0.12;
 const TICK_MS = 25;
 const CLICK_S = 0.05;
 
-function playClick(ctx: AudioContext, time: number, accent: boolean) {
+function playClick(ctx: AudioContext, time: number, accent: boolean, volume: number) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.frequency.value = accent ? 1600 : 1100;
-  gain.gain.setValueAtTime(accent ? 0.5 : 0.32, time);
+  gain.gain.setValueAtTime(Math.max(0.0011, (accent ? 0.6 : 0.4) * volume), time);
   gain.gain.exponentialRampToValueAtTime(0.001, time + CLICK_S);
   osc.connect(gain).connect(ctx.destination);
   osc.start(time);
@@ -84,7 +86,7 @@ export function createWebAudioMetronome(): Metronome {
     if (!ctx || !current) return;
     const until = ctx.currentTime + LOOKAHEAD_S;
     for (const click of clicksBetween({ ...current, start: window.start, from: window.until, to: until })) {
-      playClick(ctx, click.time, click.accent);
+      playClick(ctx, click.time, click.accent, current.volume ?? 0.8);
       announce(click, ctx.currentTime);
     }
     window = { ...window, until };

@@ -2,11 +2,11 @@
  * Player state for a song: the engine (created on first need), transport settings,
  * playback position, the bar-section loop, and the active view.
  */
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Song } from '../song/song';
 import { songToAlphaTex } from './alphaTex';
 import type { DrumStyle } from './drums';
-import { EngineFactoryContext, type BarRange, type PlayerEngine, type PlayerEvent, type ScoreView } from './engine';
+import { EngineFactoryContext, type BarRange, type PlayerEngine, type PlayerEvent, type ScoreView, type Volumes } from './engine';
 import { MetronomeContext, type Metronome } from './metronome';
 
 export type SongView = 'chords' | ScoreView;
@@ -26,9 +26,38 @@ export interface PlayerSettings {
   view: SongView;
   drums: boolean;
   drumStyle: DrumStyle;
+  drumFills: boolean;
+  drumEnding: boolean;
+  countIn: boolean;
+  volumes: Volumes;
+  trainer: Trainer;
 }
 
-const DEFAULTS: PlayerSettings = { speed: 1, looping: false, metronome: false, range: null, hideFingers: false, view: 'chords', drums: false, drumStyle: 'basic' };
+/** Speed trainer: each completed loop adds `step` to the speed, up to `target`. */
+export interface Trainer {
+  on: boolean;
+  step: number;
+  target: number;
+}
+
+const DEFAULTS: PlayerSettings = {
+  speed: 1,
+  looping: false,
+  metronome: false,
+  range: null,
+  hideFingers: false,
+  view: 'chords',
+  drums: false,
+  drumStyle: 'basic',
+  drumFills: false,
+  drumEnding: false,
+  countIn: false,
+  volumes: { guitar: 1, drums: 0.8, metronome: 0.8 },
+  trainer: { on: false, step: 0.05, target: 1 },
+};
+
+/** Next speed after a completed loop pass. */
+export const trainedSpeed = (speed: number, t: Trainer) => Math.min(t.target, Math.round((speed + t.step) * 100) / 100);
 
 /** Section picking: first tap sets the anchor bar, second tap closes the range. */
 function useSectionPicker(setSettings: (fn: (s: PlayerSettings) => PlayerSettings) => void) {
@@ -60,7 +89,7 @@ function useSync<T>(engine: PlayerEngine | null, value: T, apply: (e: PlayerEngi
  * The standalone metronome: runs while `on` (metronome enabled and the song not playing),
  * restarting when tempo or meter change. Returns the beat that last sounded.
  */
-function useStandaloneMetronome(on: boolean, bpm: number, song: Song) {
+function useStandaloneMetronome(on: boolean, bpm: number, song: Song, volume: number) {
   const create = useContext(MetronomeContext);
   const [metronome, setMetronome] = useState<Metronome | null>(null);
   const [beat, setBeat] = useState<number | null>(null);
@@ -74,10 +103,28 @@ function useStandaloneMetronome(on: boolean, bpm: number, song: Song) {
   };
   useEffect(() => {
     if (!metronome) return;
-    if (on) metronome.start({ bpm, ts: { beats, unit } });
+    if (on) metronome.start({ bpm, ts: { beats, unit }, volume });
     return () => metronome.stop();
-  }, [metronome, on, bpm, beats, unit]);
+  }, [metronome, on, bpm, beats, unit, volume]);
   return { beat: on ? beat : null, ensure };
+}
+
+/**
+ * Speed trainer: playback jumping back to an earlier bar means a loop pass finished.
+ * Returns a ref'd handler (stable for the engine subscription) fed with each position's bar.
+ */
+function useLoopPass(settings: PlayerSettings, setSettings: (fn: (s: PlayerSettings) => PlayerSettings) => void) {
+  const last = useRef(-1);
+  const trainer = useRef(settings.trainer);
+  const handler = useRef((bar: number) => {
+    const wrapped = bar < last.current;
+    last.current = bar;
+    if (wrapped && trainer.current.on) setSettings((s) => ({ ...s, speed: trainedSpeed(s.speed, s.trainer) }));
+  });
+  useEffect(() => {
+    trainer.current = settings.trainer;
+  }, [settings.trainer]);
+  return handler;
 }
 
 export function usePlayer(song: Song) {
@@ -90,20 +137,25 @@ export function usePlayer(song: Song) {
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettings] = useState<PlayerSettings>(DEFAULTS);
   const section = useSectionPicker(setSettings);
-  const tex = useMemo(() => songToAlphaTex(song, { drums: settings.drumStyle }), [song, settings.drumStyle]);
-  const click = useStandaloneMetronome(settings.metronome && !playing, Math.round(song.tempo * settings.speed), song);
+  const { drumStyle, drumFills, drumEnding } = settings;
+  const tex = useMemo(() => songToAlphaTex(song, { drums: drumStyle, drumFills, drumEnding }), [song, drumStyle, drumFills, drumEnding]);
+  const onLoopPass = useLoopPass(settings, setSettings);
+  const click = useStandaloneMetronome(settings.metronome && !playing, Math.round(song.tempo * settings.speed), song, settings.volumes.metronome);
 
   const ensureEngine = useCallback(() => {
     if (engine || !host) return engine;
     const created = factory(host);
     created.subscribe((e: PlayerEvent) => {
       if (e.type === 'state') setPlaying(e.playing);
-      if (e.type === 'position') setPosition({ bar: e.bar, unit: e.unit });
+      if (e.type === 'position') {
+        setPosition({ bar: e.bar, unit: e.unit });
+        onLoopPass.current(e.bar);
+      }
       if (e.type === 'error') setError(e.message);
     });
     setEngine(created);
     return created;
-  }, [engine, host, factory]);
+  }, [engine, host, factory, onLoopPass]);
 
   useEffect(() => () => engine?.destroy(), [engine]);
   useSync(engine, tex, (e, t) => e.load(t));
@@ -112,6 +164,8 @@ export function usePlayer(song: Song) {
   useSync(engine, settings.metronome, (e, v) => e.setMetronome(v));
   useSync(engine, settings.range, (e, v) => e.setRange(v));
   useSync(engine, settings.drums, (e, v) => e.setDrums(v));
+  useSync(engine, settings.countIn, (e, v) => e.setCountIn(v));
+  useSync(engine, settings.volumes, (e, v) => e.setVolumes(v));
   useSync(engine, settings.view, (e, v) => v !== 'chords' && e.setView(v));
 
   const update = (patch: Partial<PlayerSettings>) => setSettings((s) => ({ ...s, ...patch }));

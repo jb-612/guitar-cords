@@ -165,7 +165,7 @@ describe('song player', () => {
     it('ticks without the song playing, at the song tempo and time signature', async () => {
       const { user, engines, metronome } = setup();
       await user.click(screen.getByRole('button', { name: 'Metronome' }));
-      expect(metronome.running).toEqual({ bpm: 90, ts: { beats: 4, unit: 4 } });
+      expect(metronome.running).toMatchObject({ bpm: 90, ts: { beats: 4, unit: 4 } });
       expect(engines).toHaveLength(0);
       await user.click(screen.getByRole('button', { name: 'Metronome' }));
       expect(metronome.running).toBeNull();
@@ -236,6 +236,63 @@ describe('song player', () => {
       engine().emit({ type: 'position', bar: 2, unit: 0 });
       expect(scroll).toHaveBeenCalled();
       expect(scroll.mock.contexts.at(-1)).toBe(bar(3));
+    });
+  });
+
+  describe('sound & practice', () => {
+    async function openMixer(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Sound & practice' }));
+      return screen.getByRole('dialog', { name: 'Sound & practice' });
+    }
+
+    it('turns on a count-in', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      const sheet = await openMixer(user);
+      await user.click(within(sheet).getByRole('checkbox', { name: /count-in/i }));
+      expect(engine().last('setCountIn')).toBe(true);
+    });
+
+    it('sets separate volumes for guitar, drums and metronome', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      const sheet = await openMixer(user);
+      fireEvent.change(within(sheet).getByRole('slider', { name: 'Guitar volume' }), { target: { value: '40' } });
+      fireEvent.change(within(sheet).getByRole('slider', { name: 'Drums volume' }), { target: { value: '70' } });
+      fireEvent.change(within(sheet).getByRole('slider', { name: 'Metronome volume' }), { target: { value: '20' } });
+      expect(engine().last('setVolumes')).toEqual({ guitar: 0.4, drums: 0.7, metronome: 0.2 });
+    });
+
+    it('changes the guitar sound and swing feel of the song', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      const sheet = await openMixer(user);
+      await user.click(within(sheet).getByRole('radio', { name: 'Nylon' }));
+      expect(engine().last('load')).toContain('acousticguitarnylon');
+      await user.click(within(sheet).getByRole('checkbox', { name: /swing feel/i }));
+      expect(engine().last('load')).toContain('\\tf triplet-8th');
+    });
+
+    it('adds drum fills and an ending', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      const sheet = await openMixer(user);
+      await user.click(within(sheet).getByRole('checkbox', { name: /drum fills/i }));
+      await user.click(within(sheet).getByRole('checkbox', { name: /crash & ending/i }));
+      expect(engine().last('load')).toContain('crashmediumhit');
+    });
+
+    it('speed trainer: each loop gets a little faster, up to the target', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: '90' } });
+      const sheet = await openMixer(user);
+      await user.click(within(sheet).getByRole('checkbox', { name: /speed trainer/i }));
+      expect(engine().last('setLooping')).toBe(true);
+      for (const bar of [0, 1, 2, 0]) engine().emit({ type: 'position', bar, unit: 0 });
+      expect(engine().last('setSpeed')).toBe(0.95);
+      for (const bar of [1, 2, 0, 1, 2, 0]) engine().emit({ type: 'position', bar, unit: 0 });
+      expect(engine().last('setSpeed')).toBe(1);
     });
   });
 });

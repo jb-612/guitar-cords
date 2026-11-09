@@ -13,6 +13,13 @@ export interface BarRange {
   to: number;
 }
 
+/** 0..1 each. */
+export interface Volumes {
+  guitar: number;
+  drums: number;
+  metronome: number;
+}
+
 export type PlayerEvent =
   | { type: 'ready' }
   | { type: 'state'; playing: boolean }
@@ -32,6 +39,9 @@ export interface PlayerEngine {
   setMetronome(on: boolean): void;
   /** Mute or unmute the drum track (if the loaded song has one). */
   setDrums(on: boolean): void;
+  /** One bar of clicks before playback starts. */
+  setCountIn(on: boolean): void;
+  setVolumes(volumes: Volumes): void;
   subscribe(listener: (e: PlayerEvent) => void): () => void;
   destroy(): void;
 }
@@ -60,6 +70,8 @@ export const EngineFactoryContext = createContext<EngineFactory>((host) => {
     setRange: (r) => run((e) => e.setRange(r)),
     setMetronome: (on) => run((e) => e.setMetronome(on)),
     setDrums: (on) => run((e) => e.setDrums(on)),
+    setCountIn: (on) => run((e) => e.setCountIn(on)),
+    setVolumes: (v) => run((e) => e.setVolumes(v)),
     subscribe: (listener) => {
       listeners.add(listener);
       const off = engine?.subscribe(listener);

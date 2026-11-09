@@ -127,7 +127,7 @@ export function App() {
         onMoveBar={(from, to) => setSong((s) => moveBar(s, from, to))}
         onTranspose={() => setOverlay({ kind: 'transpose' })}
       />
-      <Transport song={song} player={player} />
+      <Transport song={song} player={player} onSongChange={setSong} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} />
     </div>
   );

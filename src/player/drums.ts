@@ -95,21 +95,60 @@ function swingEighths(ts: TimeSignature): Grid {
 
 const PATTERNS: Record<DrumStyle, (ts: TimeSignature) => Grid> = { basic, bossa, swing };
 
+const CRASH = 'crashmediumhit';
+const FILL = [SNARE, SNARE, 'hightomhit', 'midtomhit', 'lowtomhit', 'highfloortomhit', 'lowfloortomhit', SNARE];
+const PHRASE = 4;
+
+export interface DrumExtras {
+  fills?: boolean;
+  ending?: boolean;
+}
+
+interface BarRole {
+  fill: boolean;
+  crash: boolean;
+  ending: boolean;
+}
+
+/** Fill on the last bar of each 4-bar phrase, crash on the first bar and after each fill, ending on the last bar. */
+const phraseEnd = (i: number, last: number) => i % PHRASE === PHRASE - 1 && i !== last;
+
+function roleOf(i: number, last: number, x: DrumExtras): BarRole {
+  const [fills, ending] = [x.fills === true, x.ending === true];
+  return { ending: ending && i === last, fill: fills && phraseEnd(i, last), crash: (fills || ending) && i % PHRASE === 0 };
+}
+
+/** Second half of the bar becomes a run down the toms. */
+const withFill = (steps: Step[]) => {
+  const from = Math.floor(steps.length / 2);
+  return steps.map((s, i) => (i < from ? s : [FILL[(i - from) % FILL.length]!]));
+};
+
+const withCrash = (steps: Step[]) => steps.map((s, i) => (i === 0 ? [...s.filter((x) => x !== HAT && x !== RIDE && x !== SHAKER), CRASH] : s));
+const endingOf = (steps: Step[]) => steps.map((_, i) => (i === 0 ? [KICK, CRASH] : []));
+
+function decorate(steps: Step[], role: BarRole): Step[] {
+  if (role.ending) return endingOf(steps);
+  const filled = role.fill ? withFill(steps) : steps;
+  return role.crash ? withCrash(filled) : filled;
+}
+
 const stepTex = (s: Step, duration: string) => {
   if (s.length === 0) return `r${duration}`;
   return `${s.length > 1 ? `(${s.join(' ')})` : s[0]}${duration}`;
 };
 
-function barTex(style: DrumStyle, ts: TimeSignature, change: TimeSignature | undefined): string {
+function barTex(style: DrumStyle, ts: TimeSignature, change: TimeSignature | undefined, role: BarRole): string {
   const { steps, duration } = PATTERNS[style](ts);
   const prefix = change ? `\\ts ${change.beats} ${change.unit} ` : '';
-  return prefix + steps.map((s) => stepTex(s, duration)).join(' ');
+  return prefix + decorate(steps, role).map((s) => stepTex(s, duration)).join(' ');
 }
 
 /** alphaTex lines for a drum track matching the song bar for bar; empty when the song has no bars. */
-export function drumTrackTex(song: Song, style: DrumStyle): string[] {
+export function drumTrackTex(song: Song, style: DrumStyle, extras: DrumExtras = {}): string[] {
   if (song.bars.length === 0) return [];
-  const bars = song.bars.map((b, i) => barTex(style, barTimeSignature(song, i), b.timeSignature));
+  const last = song.bars.length - 1;
+  const bars = song.bars.map((b, i) => barTex(style, barTimeSignature(song, i), b.timeSignature, roleOf(i, last, extras)));
   return [
     '\\track "Drums"',
     '\\instrument percussion',

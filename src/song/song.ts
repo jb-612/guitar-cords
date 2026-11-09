@@ -10,6 +10,7 @@ import { suggestKeys, type KeySuggestion } from '../music/keyDetection';
 import { barUnits, defaultDirection, sameTimeSignature, type TimeSignature } from './rhythm';
 
 export type Direction = 'down' | 'up';
+export type GuitarSound = 'steel' | 'nylon' | 'electric';
 export type PlayStyle = 'strum' | 'arpeggio';
 export type Sustain = 'ring' | 'cut';
 
@@ -56,6 +57,10 @@ export interface Song {
   updatedAt?: number;
   /** Capo fret (0 = none). Shapes and names are as played; the song sounds this many semitones higher. */
   capo?: number;
+  /** Guitar sound for playback (default steel-string acoustic). */
+  sound?: GuitarSound;
+  /** Swing the eighth notes (played as triplet feel). */
+  swing?: boolean;
 }
 
 export interface ChordChoice {

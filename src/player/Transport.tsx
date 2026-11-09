@@ -2,7 +2,10 @@
  * Sticky transport bar: play/pause, stop, tempo, loop, metronome, practice mode, and
  * the bar-section loop.
  */
+import { useState } from 'react';
+import { Sheet } from '../components/Sheet';
 import type { Song } from '../song/song';
+import { MixerSheet } from './MixerSheet';
 import { DRUM_STYLES, type DrumStyle } from './drums';
 import type { Player } from './usePlayer';
 import './player.css';
@@ -10,8 +13,15 @@ import './player.css';
 const MIN_SPEED = 25;
 const MAX_SPEED = 200;
 
-export function Transport({ song, player }: { song: Song; player: Player }) {
+interface TransportProps {
+  song: Song;
+  player: Player;
+  onSongChange: (fn: (s: Song) => Song) => void;
+}
+
+export function Transport({ song, player, onSongChange }: TransportProps) {
   const { settings, update } = player;
+  const [mixer, setMixer] = useState(false);
   const percent = Math.round(settings.speed * 100);
   return (
     <div className="transport" role="toolbar" aria-label="Playback">
@@ -39,21 +49,12 @@ export function Transport({ song, player }: { song: Song; player: Player }) {
           />
         </label>
       </div>
-      <div className="transport-toggles">
-        <Toggle label="Loop" on={settings.looping} onClick={() => update({ looping: !settings.looping })} icon="⟲" />
-        <Toggle label="Metronome" on={settings.metronome} onClick={player.toggleMetronome} icon="♩" />
-        {player.metronomeBeat !== null && <BeatDots beat={player.metronomeBeat} beats={song.timeSignature.beats} />}
-        <Toggle label="Drums" on={settings.drums} onClick={() => update({ drums: !settings.drums })} icon="◎" />
-        <select className="drum-style" aria-label="Drum style" value={settings.drumStyle} onChange={(e) => update({ drumStyle: e.target.value as DrumStyle })}>
-          {DRUM_STYLES.map((d) => (
-            <option key={d.style} value={d.style}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-        <Toggle label="Hide fingers" on={settings.hideFingers} onClick={() => update({ hideFingers: !settings.hideFingers })} icon="◌" />
-        <Section player={player} />
-      </div>
+      <TransportToggles song={song} player={player} onMixer={() => setMixer(true)} />
+      {mixer && (
+        <Sheet label="Sound & practice" onClose={() => setMixer(false)}>
+          <MixerSheet song={song} player={player} onSongChange={onSongChange} onClose={() => setMixer(false)} />
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -69,6 +70,31 @@ function PlaybackError({ message, onDismiss }: { message: string; onDismiss: () 
         Dismiss
       </button>
     </div>
+  );
+}
+
+function TransportToggles({ song, player, onMixer }: { song: Song; player: Player; onMixer: () => void }) {
+  const { settings, update } = player;
+  return (
+    <div className="transport-toggles">
+        <Toggle label="Loop" on={settings.looping} onClick={() => update({ looping: !settings.looping })} icon="⟲" />
+        <Toggle label="Metronome" on={settings.metronome} onClick={player.toggleMetronome} icon="♩" />
+        {player.metronomeBeat !== null && <BeatDots beat={player.metronomeBeat} beats={song.timeSignature.beats} />}
+        <Toggle label="Drums" on={settings.drums} onClick={() => update({ drums: !settings.drums })} icon="◎" />
+        <select className="drum-style" aria-label="Drum style" value={settings.drumStyle} onChange={(e) => update({ drumStyle: e.target.value as DrumStyle })}>
+          {DRUM_STYLES.map((d) => (
+            <option key={d.style} value={d.style}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+        <Toggle label="Hide fingers" on={settings.hideFingers} onClick={() => update({ hideFingers: !settings.hideFingers })} icon="◌" />
+        <Section player={player} />
+        <button type="button" className="toggle" aria-label="Sound & practice" onClick={onMixer}>
+          <span className="toggle-icon" aria-hidden="true">≋</span>
+          <span className="toggle-label" aria-hidden="true">Mix</span>
+        </button>
+      </div>
   );
 }
 

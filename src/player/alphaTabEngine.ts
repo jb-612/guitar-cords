@@ -4,7 +4,7 @@
  * is ready (e.g. Play) are applied once it is.
  */
 import { AlphaTabApi, LayoutMode, PlayerMode, StaveProfile, synth, type model } from '@coderline/alphatab';
-import type { BarRange, PlayerEngine, PlayerEvent, ScoreView } from './engine';
+import type { BarRange, PlayerEngine, PlayerEvent, ScoreView, Volumes } from './engine';
 
 const base = import.meta.env.BASE_URL;
 /** alphaTab uses 960 MIDI ticks per quarter note; a quarter is 8 units. */
@@ -30,6 +30,17 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
   let wantsPlay = false;
   let range: BarRange | null = null;
   let drumsOn = false;
+  let metronomeOn = false;
+  let volumes: Volumes = { guitar: 1, drums: 0.8, metronome: 0.8 };
+  const setTrackVolume = (index: number, volume: number) => {
+    const track = api.score?.tracks[index];
+    if (track) api.changeTrackVolume([track], volume);
+  };
+  const applyVolumes = () => {
+    setTrackVolume(0, volumes.guitar);
+    setTrackVolume(1, volumes.drums);
+    api.metronomeVolume = metronomeOn ? volumes.metronome : 0;
+  };
   /** Track 1 is the drum track when the song has one. */
   const applyDrums = () => {
     const drums = api.score?.tracks[1];
@@ -49,6 +60,7 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
   api.scoreLoaded.on(() => {
     applyRange(api, range);
     applyDrums();
+    applyVolumes();
   });
 
   return {
@@ -73,7 +85,15 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
       range = r;
       applyRange(api, r);
     },
-    setMetronome: (on) => (api.metronomeVolume = on ? 1 : 0),
+    setMetronome: (on) => {
+      metronomeOn = on;
+      applyVolumes();
+    },
+    setCountIn: (on) => (api.countInVolume = on ? 1 : 0),
+    setVolumes: (v) => {
+      volumes = v;
+      applyVolumes();
+    },
     setDrums: (on) => {
       drumsOn = on;
       applyDrums();
