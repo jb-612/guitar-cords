@@ -14,8 +14,8 @@ const MIN_SPEED = 25;
 const MAX_SPEED = 200;
 
 /** Keep page content clear of the fixed transport: publish its height as --transport-h. */
-function useReservedSpace() {
-  const ref = useRef<HTMLDivElement>(null);
+function useReservedSpace<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
@@ -37,10 +37,10 @@ interface TransportProps {
 export function Transport({ song, player, onSongChange }: TransportProps) {
   const { settings, update } = player;
   const [mixer, setMixer] = useState(false);
-  const ref = useReservedSpace();
+  const ref = useReservedSpace<HTMLElement>();
   const percent = Math.round(settings.speed * 100);
   return (
-    <div ref={ref} className="transport" role="toolbar" aria-label="Playback">
+    <section ref={ref} className="transport" aria-label="Playback">
       {player.error && <PlaybackError message={player.error} onDismiss={player.dismissError} />}
       <div className="transport-main">
         <button type="button" className="play-btn" aria-label={player.playing ? 'Pause' : 'Play'} disabled={song.bars.length === 0} onClick={player.playPause}>
@@ -71,7 +71,7 @@ export function Transport({ song, player, onSongChange }: TransportProps) {
           <MixerSheet song={song} player={player} onSongChange={onSongChange} onClose={() => setMixer(false)} />
         </Sheet>
       )}
-    </div>
+    </section>
   );
 }
 

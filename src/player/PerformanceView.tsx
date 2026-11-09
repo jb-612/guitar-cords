@@ -18,14 +18,14 @@ export function PerformanceView({ song, player, onExit }: { song: Song; player: 
     <div className="stage" role="dialog" aria-modal="true" aria-label="Performance">
       <button type="button" className="stage-tap" aria-label="Play or pause" onClick={player.playPause} />
       <StageTop song={song} bar={position.bar} onExit={onExit} />
-      <main className="stage-main">
+      <div className="stage-main">
         <StageChord chord={current} showFingers={!player.settings.hideFingers} />
         <p className="stage-lyrics">{song.bars[position.bar]?.lyrics}</p>
-      </main>
-      <footer className="stage-next">
+      </div>
+      <div className="stage-next">
         <NextUp chord={next} />
         <span className="stage-state">{player.playing ? 'Playing — tap to pause' : 'Tap anywhere to play'}</span>
-      </footer>
+      </div>
     </div>
   );
 }
@@ -43,7 +43,7 @@ function useEscape(onExit: () => void) {
 function StageTop({ song, bar, onExit }: { song: Song; bar: number; onExit: () => void }) {
   const section = song.bars[bar]?.section;
   return (
-    <header className="stage-top">
+    <div className="stage-top">
       <span className="stage-title">{song.title}</span>
       <span className="stage-bar">
         Bar {bar + 1} / {song.bars.length}
@@ -52,7 +52,7 @@ function StageTop({ song, bar, onExit }: { song: Song; bar: number; onExit: () =
       <button type="button" className="stage-exit" onClick={onExit}>
         Exit
       </button>
-    </header>
+    </div>
   );
 }
 
