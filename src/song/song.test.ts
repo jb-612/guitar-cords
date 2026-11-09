@@ -4,6 +4,10 @@ import {
   chordSymbols,
   createSong,
   deleteBar,
+  duplicateBar,
+  moveHit,
+  replaceHit,
+  sameVoicingCount,
   fillRest,
   findEvent,
   insertBar,
@@ -161,6 +165,89 @@ describe('repeatHit (quick strumming patterns)', () => {
   it('starts a new bar when the hit already ends the bar', () => {
     const s0 = add(createSong(), 'G');
     expect(picture(repeatHit(s0, s0.bars[0]!.events[0]!.id))).toBe('G32 | G32');
+  });
+});
+
+describe('moveHit (drag and drop)', () => {
+  const song3 = () => add(add(add(createSong(), 'G', QUARTER), 'C', QUARTER), 'D'); // G8 C8 D16
+  const ids = (s: Song) => s.bars.flatMap((b) => b.events.map((e) => e.id));
+
+  it('moves a chord into a rest, leaving a rest where it was', () => {
+    const s0 = add(add(createSong(), 'G', QUARTER), 'C'); // G8 C24 -> make a rest in bar 2
+    const s1 = insertBar(s0, 1); // G8 C24 | r32
+    const g = s1.bars[0]!.events[0]!.id;
+    const rest = s1.bars[1]!.events[0]!.id;
+    expect(picture(moveHit(s1, g, rest))).toBe('r8 C24 | G8 r24');
+  });
+
+  it('keeps the moved hit\'s strum settings', () => {
+    const s0 = insertBar(add(createSong(), 'G', QUARTER), 1);
+    const g = s0.bars[0]!.events[0]!.id;
+    const s1 = setHitStyle(s0, g, { direction: 'up', style: 'arpeggio' });
+    const moved = moveHit(s1, g, s1.bars[1]!.events[0]!.id);
+    expect(moved.bars[1]!.events[0]).toMatchObject({ symbol: 'G', direction: 'up', style: 'arpeggio' });
+  });
+
+  it('dropped on another chord, the two chords swap and each slot keeps its rhythm', () => {
+    const s0 = song3();
+    const [g, , d] = ids(s0);
+    expect(picture(moveHit(s0, g!, d!))).toBe('D8 C8 G16');
+  });
+
+  it('copy mode leaves the original in place', () => {
+    const s0 = insertBar(add(createSong(), 'G', QUARTER), 1);
+    const g = s0.bars[0]!.events[0]!.id;
+    expect(picture(moveHit(s0, g, s0.bars[1]!.events[0]!.id, { copy: true }))).toBe('G8 r24 | G8 r24');
+    const s1 = song3();
+    const [g1, , d1] = ids(s1);
+    expect(picture(moveHit(s1, g1!, d1!, { copy: true }))).toBe('G8 C8 G16');
+  });
+
+  it('works within one bar, including into the rest next to it', () => {
+    const s0 = add(createSong(), 'G', QUARTER); // G8 r24
+    const [g, rest] = ids(s0);
+    expect(picture(moveHit(s0, g!, rest!))).toBe('r8 G8 r16');
+  });
+
+  it('ignores drops on itself or on unknown targets', () => {
+    const s0 = song3();
+    const [g] = ids(s0);
+    expect(moveHit(s0, g!, g!)).toBe(s0);
+    expect(moveHit(s0, g!, 'nope')).toBe(s0);
+  });
+});
+
+describe('replaceHit (one hit only, e.g. a bass walk)', () => {
+  it('changes just that hit, not others with the same fingering', () => {
+    const s0 = add(add(add(createSong(), 'G', QUARTER), 'G', QUARTER), 'G', HALF);
+    const second = s0.bars[0]!.events[1]!.id;
+    const s = replaceHit(s0, second, chord('G/F#', '2x0003'));
+    expect(chordSymbols(s)).toEqual(['G', 'G/F#', 'G']);
+  });
+
+  it('counts the other hits that share a fingering', () => {
+    const s0 = add(add(add(createSong(), 'G', QUARTER), 'G', QUARTER), 'C', HALF);
+    expect(sameVoicingCount(s0, s0.bars[0]!.events[0]!.id)).toBe(1);
+    expect(sameVoicingCount(s0, s0.bars[0]!.events[2]!.id)).toBe(0);
+  });
+});
+
+describe('duplicateBar', () => {
+  it('inserts a copy right after, with new ids and the same chords and lyrics', () => {
+    const s0 = add(add(createSong(), 'G', HALF), 'C');
+    const s1 = setLyrics(s0, s0.bars[0]!.id, 'again');
+    const s = duplicateBar(s1, 0);
+    expect(picture(s)).toBe('G16 C16 | G16 C16');
+    expect(s.bars[1]!.lyrics).toBe('again');
+    expect(s.bars[1]!.id).not.toBe(s.bars[0]!.id);
+    expect(s.bars[1]!.events[0]!.id).not.toBe(s.bars[0]!.events[0]!.id);
+  });
+
+  it('the copy does not repeat a meter or tempo change', () => {
+    const s0 = setTempoFrom(setTimeSignatureFrom(addAll(createSong(), ['G', 'C']), 1, { beats: 3, unit: 4 }), 1, 120);
+    const s = duplicateBar(s0, 1);
+    expect(s.bars[2]).toMatchObject({ timeSignature: undefined, tempo: undefined });
+    expect(barTimeSignature(s, 2)).toEqual({ beats: 3, unit: 4 });
   });
 });
 

@@ -260,14 +260,59 @@ function repeatIntoNewBar(song: Song, at: EventLocation & { event: ChordHit }): 
 }
 
 const voicingKey = (h: ChordHit) => `${h.symbol}|${toFretString(h.shape)}`;
+const chordOf = (h: ChordHit): ChordChoice => ({ symbol: h.symbol, shape: h.shape });
+const mapEvents = (song: Song, fn: (e: SongEvent) => SongEvent): Song => ({
+  ...song,
+  bars: song.bars.map((b) => ({ ...b, events: b.events.map(fn) })),
+});
 
 /** New name/fingering for every hit that shares this hit's name and fingering. */
 export function replaceVoicing(song: Song, id: string, choice: ChordChoice): Song {
   const at = chordAt(song, id);
   if (!at) return song;
   const key = voicingKey(at.event);
-  const swap = (e: SongEvent) => (e.kind === 'chord' && voicingKey(e) === key ? { ...e, ...choice } : e);
-  return { ...song, bars: song.bars.map((b) => ({ ...b, events: b.events.map(swap) })) };
+  return mapEvents(song, (e) => (e.kind === 'chord' && voicingKey(e) === key ? { ...e, ...choice } : e));
+}
+
+/** New name/fingering for this one hit only (e.g. G -> G/F# in a bass walk). */
+export function replaceHit(song: Song, id: string, choice: ChordChoice): Song {
+  return mapEvents(song, (e) => (e.id === id && e.kind === 'chord' ? { ...e, ...choice } : e));
+}
+
+/** How many other hits use the same name and fingering as this one. */
+export function sameVoicingCount(song: Song, id: string): number {
+  const at = chordAt(song, id);
+  if (!at) return 0;
+  const key = voicingKey(at.event);
+  return song.bars.flatMap((b) => b.events).filter((e) => e.kind === 'chord' && e.id !== id && voicingKey(e) === key).length;
+}
+
+/**
+ * Drag and drop. Onto a rest: the hit moves there (as long as fits) and leaves a rest behind.
+ * Onto another hit: the two chords swap, each slot keeping its rhythm. `copy` keeps the original.
+ */
+export function moveHit(song: Song, id: string, targetId: string, opts: { copy?: boolean } = {}): Song {
+  const from = chordAt(song, id);
+  const to = dropTarget(song, id, targetId);
+  if (!from || !to) return song;
+  const copy = opts.copy === true;
+  return to.event.kind === 'rest' ? moveIntoRest(song, from.event, to, copy) : swapChords(song, from.event, to.event, copy);
+}
+
+const dropTarget = (song: Song, id: string, targetId: string) => (id === targetId ? null : findEvent(song, targetId));
+
+function moveIntoRest(song: Song, hit: ChordHit, to: EventLocation, copy: boolean): Song {
+  const units = Math.min(hit.units, to.event.units);
+  const placed = editAt(song, to, (before, r, after) => [...before, { ...hit, id: newId(), units }, rest(r.units - units), ...after]);
+  return copy ? placed : removeEvent(placed, hit.id);
+}
+
+function swapChords(song: Song, a: ChordHit, b: ChordHit, copy: boolean): Song {
+  const [toB, toA] = [chordOf(a), chordOf(b)];
+  return mapEvents(song, (e) => {
+    if (e.id === b.id) return { ...e, ...toB };
+    return !copy && e.id === a.id ? { ...e, ...toA } : e;
+  });
 }
 
 export function setLyrics(song: Song, barId: string, lyrics: string): Song {
@@ -300,6 +345,14 @@ export function insertBar(song: Song, index: number): Song {
   const bars = [...song.bars];
   bars.splice(index, 0, emptyBar(barUnits(barTimeSignature(song, index - 1))));
   return normalize({ ...song, bars });
+}
+
+/** Copy a bar right after itself (new ids; meter/tempo changes are not repeated). */
+export function duplicateBar(song: Song, index: number): Song {
+  const bar = song.bars[index];
+  if (!bar) return song;
+  const copy: Bar = { ...bar, id: newId(), timeSignature: undefined, tempo: undefined, events: bar.events.map((e) => ({ ...e, id: newId() })) };
+  return normalize({ ...song, bars: [...song.bars.slice(0, index + 1), copy, ...song.bars.slice(index + 1)] });
 }
 
 /** Delete a bar. Changes that started there move to the next bar so the rest of the song keeps its meter and tempo. */

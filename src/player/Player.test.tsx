@@ -2,6 +2,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import { EngineFactoryContext } from './engine';
+import { MetronomeContext } from './metronome';
+import { FakeMetronome } from '../test/fakeMetronome';
 import { fakeEngineFactory, type FakeEngine } from '../test/fakeEngine';
 import { addChord, createSong, setLyrics, type Song } from '../song/song';
 import { shapeFromFrets } from '../music/chordShape';
@@ -20,14 +22,17 @@ function seedSong(): Song {
 
 function setup() {
   const { factory, engines } = fakeEngineFactory();
+  const metronome = new FakeMetronome();
   const user = userEvent.setup();
   render(
     <EngineFactoryContext.Provider value={factory}>
-      <App />
+      <MetronomeContext.Provider value={() => metronome}>
+        <App />
+      </MetronomeContext.Provider>
     </EngineFactoryContext.Provider>,
   );
   const engine = () => engines[0] as FakeEngine;
-  return { user, engines, engine };
+  return { user, engines, engine, metronome };
 }
 
 const bar = (n: number) => screen.getByRole('listitem', { name: `Bar ${n}` });
@@ -154,5 +159,60 @@ describe('song player', () => {
     const loads = engine().count('load');
     await user.type(screen.getByRole('textbox', { name: 'Lyrics for bar 1' }), 'x');
     expect(engine().count('load')).toBeGreaterThan(loads);
+  });
+
+  describe('metronome', () => {
+    it('ticks without the song playing, at the song tempo and time signature', async () => {
+      const { user, engines, metronome } = setup();
+      await user.click(screen.getByRole('button', { name: 'Metronome' }));
+      expect(metronome.running).toEqual({ bpm: 90, ts: { beats: 4, unit: 4 } });
+      expect(engines).toHaveLength(0);
+      await user.click(screen.getByRole('button', { name: 'Metronome' }));
+      expect(metronome.running).toBeNull();
+    });
+
+    it('follows the tempo slider', async () => {
+      const { user, metronome } = setup();
+      await user.click(screen.getByRole('button', { name: 'Metronome' }));
+      fireEvent.change(screen.getByRole('slider', { name: 'Tempo' }), { target: { value: '50' } });
+      expect(metronome.running?.bpm).toBe(45);
+    });
+
+    it('hands over to the song metronome while the song plays, and takes back when it stops', async () => {
+      const { user, engine, metronome } = setup();
+      await user.click(screen.getByRole('button', { name: 'Metronome' }));
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      engine().emit({ type: 'state', playing: true });
+      expect(metronome.running).toBeNull();
+      expect(engine().last('setMetronome')).toBe(true);
+      engine().emit({ type: 'state', playing: false });
+      expect(metronome.running).not.toBeNull();
+    });
+
+    it('shows the current beat', async () => {
+      const { user, metronome } = setup();
+      await user.click(screen.getByRole('button', { name: 'Metronome' }));
+      metronome.beat(2);
+      expect(screen.getByRole('img', { name: 'Beat 3 of 4' })).toBeInTheDocument();
+    });
+  });
+
+  describe('drums', () => {
+    it('adds a drum track in the chosen style and switches it on and off live', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Drums' }));
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      expect(engine().last('load')).toContain('\\track "Drums"');
+      expect(engine().last('setDrums')).toBe(true);
+      await user.click(screen.getByRole('button', { name: 'Drums' }));
+      expect(engine().last('setDrums')).toBe(false);
+    });
+
+    it('changes the drum style', async () => {
+      const { user, engine } = setup();
+      await user.click(screen.getByRole('button', { name: 'Play' }));
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Drum style' }), 'bossa');
+      expect(engine().last('load')).toContain('snaresidestick');
+    });
   });
 });

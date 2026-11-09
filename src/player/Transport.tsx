@@ -3,6 +3,7 @@
  * the bar-section loop.
  */
 import type { Song } from '../song/song';
+import { DRUM_STYLES, type DrumStyle } from './drums';
 import type { Player } from './usePlayer';
 import './player.css';
 
@@ -39,11 +40,33 @@ export function Transport({ song, player }: { song: Song; player: Player }) {
       </div>
       <div className="transport-toggles">
         <Toggle label="Loop" on={settings.looping} onClick={() => update({ looping: !settings.looping })} icon="⟲" />
-        <Toggle label="Metronome" on={settings.metronome} onClick={() => update({ metronome: !settings.metronome })} icon="♩" />
+        <Toggle label="Metronome" on={settings.metronome} onClick={player.toggleMetronome} icon="♩" />
+        {player.metronomeBeat !== null && <BeatDots beat={player.metronomeBeat} beats={song.timeSignature.beats} />}
+        <Toggle label="Drums" on={settings.drums} onClick={() => update({ drums: !settings.drums })} icon="◎" />
+        <select className="drum-style" aria-label="Drum style" value={settings.drumStyle} onChange={(e) => update({ drumStyle: e.target.value as DrumStyle })}>
+          {DRUM_STYLES.map((d) => (
+            <option key={d.style} value={d.style}>
+              {d.label}
+            </option>
+          ))}
+        </select>
         <Toggle label="Hide fingers" on={settings.hideFingers} onClick={() => update({ hideFingers: !settings.hideFingers })} icon="◌" />
         <Section player={player} />
       </div>
     </div>
+  );
+}
+
+const MAX_DOTS = 12;
+
+/** One dot per beat; the sounding beat lights up (first beat brighter). */
+function BeatDots({ beat, beats }: { beat: number; beats: number }) {
+  return (
+    <span className="beat-dots" role="img" aria-label={`Beat ${beat + 1} of ${beats}`}>
+      {Array.from({ length: Math.min(beats, MAX_DOTS) }, (_, i) => (
+        <span key={i} className={`beat-dot${i === beat ? ' is-on' : ''}${i === 0 ? ' is-one' : ''}`} />
+      ))}
+    </span>
   );
 }
 

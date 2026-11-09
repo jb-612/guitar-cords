@@ -1,6 +1,6 @@
 /**
  * Bar menu (button, right-click or long-press on a bar): change the time signature or
- * tempo from this bar on, insert a bar before/after, delete the bar.
+ * tempo from this bar on, insert a bar before/after, duplicate or delete the bar.
  */
 import { useState } from 'react';
 import { SheetHeader } from '../components/Sheet';
@@ -14,11 +14,12 @@ interface Props {
   onTimeSignature: (ts: (typeof COMMON_TIME_SIGNATURES)[number]) => void;
   onTempo: (bpm: number | null) => void;
   onInsert: (where: 'before' | 'after') => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDelete, onClose }: Props) {
+export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDuplicate, onDelete, onClose }: Props) {
   const n = index + 1;
   const current = barTimeSignature(song, index);
   const [bpm, setBpm] = useState(String(tempoAt(song, index)));
@@ -59,6 +60,9 @@ export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDel
         </button>
         <button type="button" className="btn ghost" onClick={() => onInsert('after')}>
           Insert bar after
+        </button>
+        <button type="button" className="btn ghost" onClick={onDuplicate}>
+          Duplicate bar
         </button>
         <button type="button" className="btn ghost danger" onClick={onDelete}>
           Delete bar

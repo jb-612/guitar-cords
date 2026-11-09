@@ -1,6 +1,6 @@
 /**
  * Options for one chord hit: length (note value, dotted, or fill to bar end),
- * strum direction, strum or arpeggio, let ring or cut off; repeat, edit shape, delete.
+ * strum direction, strum or arpeggio, let ring or cut off; duplicate, edit shape, delete.
  * Changes apply immediately so the creator sees the bar re-flow behind the sheet.
  */
 import { ChordThumb } from '../components/ChordThumb';
@@ -65,7 +65,7 @@ export function HitSheet({ hit, room, onLength, onStyle, onRepeat, onEdit, onDel
       <Choice label="Ending" value={hit.sustain} options={[['ring', 'Let ring', '◠'], ['cut', 'Cut off', '⌐']]} onChange={(sustain) => onStyle({ sustain })} />
       <div className="hit-actions">
         <button type="button" className="btn primary" onClick={onRepeat}>
-          Repeat hit
+          Duplicate
         </button>
         <button type="button" className="btn ghost" onClick={onEdit}>
           Edit shape

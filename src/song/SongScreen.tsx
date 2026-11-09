@@ -14,6 +14,7 @@ import { NowPlaying } from '../player/NowPlaying';
 import type { Player } from '../player/usePlayer';
 import { ViewSwitch } from '../player/ViewSwitch';
 import { COMMON_TIME_SIGNATURES, formatTimeSignature, lengthName, shortLength, unitsOf } from './rhythm';
+import { useHitDrag, type DragView } from './useHitDrag';
 import { setLyrics, setTempoFrom, setTimeSignatureFrom, suggestedKey, type Bar, type ChordHit, type Song, type SongEvent } from './song';
 import './SongScreen.css';
 
@@ -24,7 +25,11 @@ export interface SongScreenActions {
   onHitTap: (hitId: string) => void;
   onRestTap: (restId: string) => void;
   onBarMenu: (barIndex: number) => void;
+  /** Drag and drop: onto a rest moves, onto a chord swaps; `copy` keeps the original. */
+  onMoveHit: (fromId: string, toId: string, copy: boolean) => void;
 }
+
+type Drag = ReturnType<typeof useHitDrag>;
 
 interface Props extends SongScreenActions {
   song: Song;
@@ -67,8 +72,10 @@ function ScoreHost({ attach, hidden }: { attach: (el: HTMLDivElement | null) => 
 
 function ChordView({ song, update, player, ...actions }: Props) {
   const { position, settings, section } = player;
+  const drag = useHitDrag(actions.onMoveHit);
   return (
     <>
+      {drag.view && <DragGhost view={drag.view} />}
       {position && <NowPlaying song={song} position={position} hideFingers={settings.hideFingers} />}
       <ol className={`bars${section.picking ? ' is-picking' : ''}`} aria-label="Bars">
         {song.bars.map((bar, i) => (
@@ -78,6 +85,7 @@ function ChordView({ song, update, player, ...actions }: Props) {
             index={i}
             update={update}
             actions={actions}
+            drag={drag}
             previous={lastHit(song.bars[i - 1])}
             marks={barMarks(i, position?.bar, settings.range, section.anchor)}
             onPick={section.picking ? () => section.pickBar(i) : undefined}
@@ -196,6 +204,7 @@ interface BarProps {
   index: number;
   update: Update;
   actions: SongScreenActions;
+  drag: Drag;
   /** Last hit of the previous bar, to know whether this bar's first chord is a change. */
   previous?: ChordHit;
   marks: BarMarks;
@@ -203,7 +212,7 @@ interface BarProps {
   onPick?: () => void;
 }
 
-function BarCard({ bar, index, update, actions, previous, marks, onPick }: BarProps) {
+function BarCard({ bar, index, update, actions, drag, previous, marks, onPick }: BarProps) {
   const n = index + 1;
   const openMenu = () => actions.onBarMenu(index);
   const longPress = useLongPress(openMenu);
@@ -228,7 +237,7 @@ function BarCard({ bar, index, update, actions, previous, marks, onPick }: BarPr
           ⋯
         </button>
       </header>
-      <Lane events={bar.events} previous={previous} actions={actions} />
+      <Lane events={bar.events} previous={previous} actions={actions} drag={drag} />
       <input
         className="bar-lyrics"
         aria-label={`Lyrics for bar ${n}`}
@@ -244,14 +253,55 @@ const previousHit = (events: SongEvent[], i: number, fromLastBar?: ChordHit) =>
   i === 0 ? fromLastBar : events.slice(0, i).filter((x): x is ChordHit => x.kind === 'chord').at(-1);
 
 /** The bar's events side by side, each as wide as it is long. */
-function Lane({ events, previous, actions }: { events: SongEvent[]; previous?: ChordHit; actions: SongScreenActions }) {
+interface LaneProps {
+  events: SongEvent[];
+  previous?: ChordHit;
+  actions: SongScreenActions;
+  drag: Drag;
+}
+
+function Lane({ events, previous, actions, drag }: LaneProps) {
+  /** A click that ends a drag is not a tap. */
+  const tap = (fn: () => void) => () => {
+    if (!drag.consumeClick()) fn();
+  };
   return (
     <div className="bar-lane">
       {events.map((e, i) => {
-        if (e.kind === 'rest') return <RestSlot key={e.id} units={e.units} onTap={() => actions.onRestTap(e.id)} />;
+        const dnd = dndFor(drag.view, e.id);
+        if (e.kind === 'rest') return <RestSlot key={e.id} id={e.id} units={e.units} dnd={dnd} onTap={tap(() => actions.onRestTap(e.id))} />;
         const before = previousHit(events, i, previous);
-        return <HitSlot key={e.id} hit={e} isChange={!before || voicingKey(before) !== voicingKey(e)} onTap={() => actions.onHitTap(e.id)} />;
+        return (
+          <HitSlot
+            key={e.id}
+            hit={e}
+            isChange={!before || voicingKey(before) !== voicingKey(e)}
+            dnd={dnd}
+            onTap={tap(() => actions.onHitTap(e.id))}
+            onPointerDown={(ev) => drag.onSlotPointerDown(ev, e.id, e.symbol)}
+          />
+        );
       })}
+    </div>
+  );
+}
+
+interface Dnd {
+  dropTarget: boolean;
+  dragging: boolean;
+}
+
+function dndFor(view: DragView | null, id: string): Dnd {
+  if (!view) return { dropTarget: false, dragging: false };
+  return { dropTarget: view.over === id && view.id !== id, dragging: view.id === id };
+}
+
+/** The chord name following the pointer while dragging. */
+function DragGhost({ view }: { view: DragView }) {
+  return (
+    // left/top (not transform): the pop-in animation owns `transform`.
+    <div className="drag-chip" style={{ left: view.x, top: view.y }} aria-hidden="true">
+      {view.label}
     </div>
   );
 }
@@ -261,13 +311,24 @@ const ARROWS = { 'strum-down': '↓', 'strum-up': '↑', 'arpeggio-down': '⇣',
 
 export const hitLabel = (h: ChordHit) => `${h.symbol}, ${lengthName(h.units)}, ${h.style} ${h.direction}${h.sustain === 'cut' ? ', cut off' : ''}`;
 
-const slotClass = (hit: ChordHit, isChange: boolean) => ['lane-slot hit', isChange && 'is-change', hit.sustain === 'cut' && 'is-cut'].filter(Boolean).join(' ');
+const slotClass = (hit: ChordHit, isChange: boolean, dnd: Dnd) =>
+  ['lane-slot hit', isChange && 'is-change', hit.sustain === 'cut' && 'is-cut', dnd.dropTarget && 'is-drop-target', dnd.dragging && 'is-dragging'].filter(Boolean).join(' ');
 
-function HitSlot({ hit, isChange, onTap }: { hit: ChordHit; isChange: boolean; onTap: () => void }) {
+interface HitSlotProps {
+  hit: ChordHit;
+  isChange: boolean;
+  dnd: Dnd;
+  onTap: () => void;
+  onPointerDown: (e: PointerEvent) => void;
+}
+
+function HitSlot({ hit, isChange, dnd, onTap, onPointerDown }: HitSlotProps) {
   return (
     <button
       type="button"
-      className={slotClass(hit, isChange)}
+      className={slotClass(hit, isChange, dnd)}
+      data-slot-id={hit.id}
+      onPointerDown={onPointerDown}
       data-testid="bar-hit"
       data-symbol={hit.symbol}
       aria-label={hitLabel(hit)}
@@ -286,9 +347,9 @@ function HitSlot({ hit, isChange, onTap }: { hit: ChordHit; isChange: boolean; o
   );
 }
 
-function RestSlot({ units, onTap }: { units: number; onTap: () => void }) {
+function RestSlot({ id, units, dnd, onTap }: { id: string; units: number; dnd: Dnd; onTap: () => void }) {
   return (
-    <button type="button" className="lane-slot rest" data-testid="bar-rest" aria-label={`Rest, ${lengthName(units)} — add a chord here`} style={{ flexGrow: units }} onClick={onTap}>
+    <button type="button" className={`lane-slot rest${dnd.dropTarget ? ' is-drop-target' : ''}`} data-slot-id={id} data-testid="bar-rest" aria-label={`Rest, ${lengthName(units)} — add a chord here`} style={{ flexGrow: units }} onClick={onTap}>
       <span aria-hidden="true">＋</span>
       <span className="hit-len" aria-hidden="true">
         {shortLength(units)}

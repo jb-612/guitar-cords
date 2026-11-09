@@ -30,6 +30,8 @@ export interface PlayerEngine {
   setLooping(on: boolean): void;
   setRange(range: BarRange | null): void;
   setMetronome(on: boolean): void;
+  /** Mute or unmute the drum track (if the loaded song has one). */
+  setDrums(on: boolean): void;
   subscribe(listener: (e: PlayerEvent) => void): () => void;
   destroy(): void;
 }
@@ -57,6 +59,7 @@ export const EngineFactoryContext = createContext<EngineFactory>((host) => {
     setLooping: (on) => run((e) => e.setLooping(on)),
     setRange: (r) => run((e) => e.setRange(r)),
     setMetronome: (on) => run((e) => e.setMetronome(on)),
+    setDrums: (on) => run((e) => e.setDrums(on)),
     subscribe: (listener) => {
       listeners.add(listener);
       const off = engine?.subscribe(listener);

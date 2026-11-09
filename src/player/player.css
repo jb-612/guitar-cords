@@ -365,3 +365,41 @@
     transform: rotate(0.6deg);
   }
 }
+
+/* Metronome beat indicator */
+.beat-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.beat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--hairline);
+  transition: background 60ms linear, transform 120ms var(--ease-spring);
+}
+
+.beat-dot.is-on {
+  background: var(--brass-strong);
+  transform: scale(1.35);
+}
+
+.beat-dot.is-one.is-on {
+  background: var(--rosewood);
+  transform: scale(1.6);
+}
+
+.drum-style {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}

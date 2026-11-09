@@ -14,6 +14,7 @@ export class FakeEngine implements PlayerEngine {
   setLooping = (on: boolean) => void this.calls.push(['setLooping', on]);
   setRange = (r: unknown) => void this.calls.push(['setRange', r]);
   setMetronome = (on: boolean) => void this.calls.push(['setMetronome', on]);
+  setDrums = (on: boolean) => void this.calls.push(['setDrums', on]);
   destroy = () => void this.calls.push(['destroy']);
   subscribe = (l: (e: PlayerEvent) => void) => {
     this.listeners.add(l);

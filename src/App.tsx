@@ -14,6 +14,10 @@ import {
   barTimeSignature,
   createSong,
   deleteBar,
+  duplicateBar,
+  moveHit,
+  replaceHit,
+  sameVoicingCount,
   fillRest,
   findEvent,
   insertBar,
@@ -72,6 +76,7 @@ export function App() {
         onRestTap={(restId) => setOverlay({ kind: 'picker', restId })}
         onHitTap={(id) => setOverlay({ kind: 'hit', id })}
         onBarMenu={(index) => setOverlay({ kind: 'bar', index })}
+        onMoveHit={(from, to, copy) => setSong((s) => moveHit(s, from, to, { copy }))}
       />
       <Transport song={song} player={player} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
@@ -135,17 +140,34 @@ function editorStart(song: Song, existing?: ChordHit) {
   return { title: `Edit ${existing.symbol}`, shape: existing.shape, name: existing.symbol, key };
 }
 
+/** Editing changes just this hit (a bass walk: G -> G/F#), or every hit with the same fingering. */
+const editExisting = (id: string, choice: ChordChoice, everywhere: boolean) => (s: Song) =>
+  everywhere ? replaceVoicing(s, id, choice) : replaceHit(s, id, choice);
+
+function AlsoUpdate({ song, hit, checked, onChange }: { song: Song; hit: ChordHit; checked: boolean; onChange: (v: boolean) => void }) {
+  const others = sameVoicingCount(song, hit.id);
+  if (others === 0) return null;
+  return (
+    <label className="also-update">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      Also update the {others} other {hit.symbol} {others === 1 ? 'hit' : 'hits'} with this fingering
+    </label>
+  );
+}
+
 function EditorSheet({ song, close, apply, remember, hitId, restId }: OverlayProps & { hitId?: string; restId?: string }) {
   const existing = hitById(song, hitId);
   const start = editorStart(song, existing);
+  const [everywhere, setEverywhere] = useState(false);
   const save = ({ name, shape }: SavedChord) => {
     const choice = { symbol: name, shape };
     remember(choice);
-    apply(existing ? (s) => replaceVoicing(s, existing.id, choice) : placeChord(choice, restId));
+    apply(existing ? editExisting(existing.id, choice, everywhere) : placeChord(choice, restId));
   };
   return (
     <Sheet label={start.title} onClose={close} wide>
       <h2 className="sheet-title editor-sheet-title">{start.title}</h2>
+      {existing && <AlsoUpdate song={song} hit={existing} checked={everywhere} onChange={setEverywhere} />}
       <ChordEditor initialShape={start.shape} initialName={start.name} initialKey={start.key} onSave={save} onCancel={close} />
     </Sheet>
   );
@@ -181,6 +203,7 @@ function BarOptions({ song, close, apply, index }: OverlayProps & { index: numbe
         onTimeSignature={(ts) => apply((s) => setTimeSignatureFrom(s, index, ts), true)}
         onTempo={(bpm) => apply((s) => setTempoFrom(s, index, bpm), true)}
         onInsert={(where) => apply((s) => insertBar(s, where === 'before' ? index : index + 1))}
+        onDuplicate={() => apply((s) => duplicateBar(s, index))}
         onDelete={() => apply((s) => deleteBar(s, index))}
         onClose={close}
       />

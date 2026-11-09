@@ -339,3 +339,35 @@
     transform: scaleX(0.85);
   }
 }
+
+/* Drag and drop */
+.lane-slot.hit {
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.lane-slot.is-dragging {
+  opacity: 0.35;
+}
+
+.lane-slot.is-drop-target {
+  border: 1.5px solid var(--brass) !important;
+  background: var(--brass-glow);
+  transform: scale(1.04);
+}
+
+.drag-chip {
+  position: fixed;
+  z-index: 100;
+  margin: -22px 0 0 -22px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper-raised);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  pointer-events: none;
+  box-shadow: var(--shadow-lift);
+  animation: pop var(--t-fast) var(--ease-spring);
+}

@@ -14,6 +14,7 @@
 import { STRING_COUNT, toFretString, type ChordShape } from '../music/chordShape';
 import { splitUnits, type NotePart } from '../song/rhythm';
 import type { Bar, ChordHit, Song } from '../song/song';
+import { drumTrackTex, type DrumStyle } from './drums';
 
 /** Quotes would end the alphaTex string; swap in typographic ones. */
 const quoted = (text: string) => `"${text.replace(/\\/g, '/').replace(/"/g, '”')}"`;
@@ -96,7 +97,12 @@ function barLyrics(bar: Bar): string[] {
   return strums === 0 ? [] : [lyricToken(bar.lyrics), ...Array.from({ length: strums - 1 }, () => '+')];
 }
 
-export function songToAlphaTex(song: Song): string {
+export interface ExportOptions {
+  /** Add a drum track in this style (it can be muted live in the player). */
+  drums?: DrumStyle;
+}
+
+export function songToAlphaTex(song: Song, options: ExportOptions = {}): string {
   const names = diagramNames(song);
   const writer: Writer = { names, previous: null };
   const body = song.bars.length ? song.bars.map((b) => barTex(b, writer)).join(' |\n') : 'r.1';
@@ -112,6 +118,7 @@ export function songToAlphaTex(song: Song): string {
     ...(lyrics ? [`\\lyrics ${quoted(lyrics)}`] : []),
     `\\ts ${song.timeSignature.beats} ${song.timeSignature.unit}`,
     body,
+    ...(options.drums ? drumTrackTex(song, options.drums) : []),
   ].join('\n');
 }
 

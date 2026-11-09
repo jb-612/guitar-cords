@@ -102,14 +102,52 @@ describe('App song flow', () => {
     expect(hits(1)[0]).toHaveAccessibleName('G, whole, arpeggio up, cut off');
   });
 
-  it('repeats a hit to build a strumming pattern', async () => {
+  it('duplicates a hit to build a strumming pattern', async () => {
     const user = userEvent.setup();
     render(<App />);
     await addFromLibrary(user, 'G', 'Quarter');
     const sheet = await openHit(user, 1);
-    await user.click(within(sheet).getByRole('button', { name: 'Repeat hit' }));
-    await user.click(within(sheet).getByRole('button', { name: 'Repeat hit' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Duplicate' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Duplicate' }));
     expect(lanes()).toEqual([['G', 'G', 'G', '-']]);
+  });
+
+  async function threeGs(user: User) {
+    await addFromLibrary(user, 'G', 'Quarter');
+    const sheet = await openHit(user, 1);
+    await user.click(within(sheet).getByRole('button', { name: 'Duplicate' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Duplicate' }));
+    await user.click(within(sheet).getByRole('button', { name: 'Close' }));
+  }
+
+  it('bass walk: duplicate, then edit just one hit', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await threeGs(user);
+    const sheet = await openHit(user, 1, 1);
+    await user.click(within(sheet).getByRole('button', { name: 'Edit shape' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit G' });
+    expect(within(editor).getByRole('checkbox', { name: /also update the 2 other g hits/i })).not.toBeChecked();
+    const name = within(editor).getByRole('textbox', { name: 'Chord name' });
+    await user.clear(name);
+    await user.type(name, 'G/F#');
+    await user.click(within(editor).getByRole('button', { name: /save chord/i }));
+    expect(lanes()).toEqual([['G', 'G/F#', 'G', '-']]);
+  });
+
+  it('can update every hit with the same fingering at once', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await threeGs(user);
+    const sheet = await openHit(user, 1, 1);
+    await user.click(within(sheet).getByRole('button', { name: 'Edit shape' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit G' });
+    await user.click(within(editor).getByRole('checkbox', { name: /also update/i }));
+    const name = within(editor).getByRole('textbox', { name: 'Chord name' });
+    await user.clear(name);
+    await user.type(name, 'Gmaj');
+    await user.click(within(editor).getByRole('button', { name: /save chord/i }));
+    expect(lanes()).toEqual([['Gmaj', 'Gmaj', 'Gmaj', '-']]);
   });
 
   it('deleting a hit leaves a rest in its place', async () => {
@@ -158,6 +196,16 @@ describe('App song flow', () => {
     await user.click(within(menu).getByRole('button', { name: 'Set tempo' }));
     await user.click(within(menu).getByRole('button', { name: 'Close' }));
     expect(within(bar(3)).getByText('♩ = 120')).toBeInTheDocument();
+  });
+
+  it('duplicates a bar from the bar menu', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addFromLibrary(user, 'G', 'Half');
+    await addFromLibrary(user, 'C');
+    await user.click(within(bar(1)).getByRole('button', { name: 'Bar 1 options' }));
+    await user.click(screen.getByRole('button', { name: 'Duplicate bar' }));
+    expect(lanes()).toEqual([['G', 'C'], ['G', 'C']]);
   });
 
   it('inserts and deletes bars from the bar menu', async () => {
@@ -216,5 +264,56 @@ describe('App song flow', () => {
     render(<App />);
     expect(lanes()).toEqual([['G', '-']]);
     expect(screen.getByRole('textbox', { name: 'Lyrics for bar 1' })).toHaveValue('kept');
+  });
+
+  describe('drag and drop', () => {
+    /** Drag `from` and release over `over` (hit-testing is stubbed, jsdom has no layout). */
+    function drag(from: HTMLElement, over: HTMLElement, opts: { altKey?: boolean } = {}) {
+      document.elementFromPoint = () => over;
+      fireEvent.pointerDown(from, { button: 0, pointerType: 'mouse', clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(window, { pointerType: 'mouse', clientX: 60, clientY: 80 });
+      fireEvent.pointerUp(window, { pointerType: 'mouse', clientX: 60, clientY: 80, ...opts });
+      fireEvent.click(from);
+    }
+
+    async function gcThenEmptyBar(user: User) {
+      await addFromLibrary(user, 'G', 'Half');
+      await addFromLibrary(user, 'C');
+      await user.click(within(bar(1)).getByRole('button', { name: 'Bar 1 options' }));
+      await user.click(screen.getByRole('button', { name: 'Insert bar after' }));
+    }
+
+    it('moves a chord into a rest in another bar', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcThenEmptyBar(user);
+      drag(hits(1)[0]!, within(bar(2)).getByTestId('bar-rest'));
+      expect(lanes()).toEqual([['-', 'C'], ['G', '-']]);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('swaps two chords when dropped on a chord', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcThenEmptyBar(user);
+      drag(hits(1)[0]!, hits(1)[1]!);
+      expect(lanes()).toEqual([['C', 'G'], ['-']]);
+    });
+
+    it('copies instead of moving with Alt / Option held', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await gcThenEmptyBar(user);
+      drag(hits(1)[1]!, within(bar(2)).getByTestId('bar-rest'), { altKey: true });
+      expect(lanes()).toEqual([['G', 'C'], ['C', '-']]); // a half-bar C keeps its length
+    });
+
+    it('a plain click still opens the chord options', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await addFromLibrary(user, 'G');
+      await user.click(hits(1)[0]!);
+      expect(screen.getByRole('dialog', { name: /chord options/i })).toBeInTheDocument();
+    });
   });
 });

@@ -72,3 +72,19 @@
 .new-song-btn:active {
   transform: scale(0.96);
 }
+
+.also-update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 16px 12px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.also-update input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brass-strong);
+}

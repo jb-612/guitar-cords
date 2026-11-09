@@ -29,6 +29,12 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
   let ready = false;
   let wantsPlay = false;
   let range: BarRange | null = null;
+  let drumsOn = false;
+  /** Track 1 is the drum track when the song has one. */
+  const applyDrums = () => {
+    const drums = api.score?.tracks[1];
+    if (drums) api.changeTrackMute([drums], !drumsOn);
+  };
 
   api.playerReady.on(() => {
     ready = true;
@@ -40,10 +46,14 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
   api.playerStateChanged.on((e) => emit({ type: 'state', playing: e.state === synth.PlayerState.Playing }));
   api.playedBeatChanged.on((beat: model.Beat) => emit({ type: 'position', bar: beat.voice.bar.index, unit: Math.round(beat.playbackStart / TICKS_PER_UNIT) }));
   api.error.on((e) => emit({ type: 'error', message: String(e.message ?? e) }));
-  api.scoreLoaded.on(() => applyRange(api, range));
+  api.scoreLoaded.on(() => {
+    applyRange(api, range);
+    applyDrums();
+  });
 
   return {
-    load: (tex) => api.tex(tex),
+    // Only the guitar (track 0) is drawn; drums play but stay out of the tab/score.
+    load: (tex) => api.tex(tex, [0]),
     setView: (view) => {
       api.settings.display.staveProfile = STAVE_PROFILE[view];
       api.updateSettings();
@@ -64,6 +74,10 @@ export function createAlphaTabEngine(host: HTMLElement): PlayerEngine {
       applyRange(api, r);
     },
     setMetronome: (on) => (api.metronomeVolume = on ? 1 : 0),
+    setDrums: (on) => {
+      drumsOn = on;
+      applyDrums();
+    },
     subscribe: (l) => {
       listeners.add(l);
       return () => void listeners.delete(l);
