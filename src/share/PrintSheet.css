@@ -1,0 +1,104 @@
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .app > :not(.print-sheet),
+  .sheet-layer {
+    display: none !important;
+  }
+
+  .app {
+    padding: 0 !important;
+  }
+
+  .print-sheet {
+    display: block;
+    font-family: var(--font-ui);
+    color: #000;
+  }
+
+  .print-sheet h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 26pt;
+  }
+
+  .print-details {
+    margin: 2pt 0 12pt;
+    color: #444;
+  }
+
+  .print-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8pt 14pt;
+    margin-bottom: 14pt;
+    padding-bottom: 10pt;
+    border-bottom: 0.5pt solid #999;
+  }
+
+  .print-legend figure {
+    margin: 0;
+    text-align: center;
+  }
+
+  .print-legend .chord-thumb {
+    width: 52pt;
+  }
+
+  .print-legend figcaption {
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+
+  .print-bars {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10pt 0;
+  }
+
+  .print-bar {
+    position: relative;
+    padding: 0 6pt;
+    border-left: 0.75pt solid #000;
+    break-inside: avoid;
+  }
+
+  .print-section {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .print-num {
+    font-size: 7pt;
+    color: #777;
+  }
+
+  .print-chords {
+    position: relative;
+    height: 15pt;
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  .print-chords span {
+    position: absolute;
+  }
+
+  .print-lyrics {
+    font-style: italic;
+    min-height: 12pt;
+  }
+}

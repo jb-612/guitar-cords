@@ -181,6 +181,9 @@ function refit(bar: Bar, units: number): Bar {
 /** Refit every bar to the meter in effect there (after meter changes or bar moves). */
 const normalize = (song: Song): Song => ({ ...song, bars: song.bars.map((b, i) => refit(b, capacity(song, i))) });
 
+/** Make every bar add up to its time signature (after importing from other formats). */
+export const normalizeSong = normalize;
+
 const emptyBar = (units: number): Bar => ({ id: newId(), events: [rest(units)], lyrics: '' });
 
 export interface EventLocation {

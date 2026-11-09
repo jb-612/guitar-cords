@@ -213,3 +213,15 @@
   border-color: var(--ink);
   color: var(--paper-raised);
 }
+
+.share-notice,
+.share-hint {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.share-notice {
+  color: #4f8a4b;
+  font-weight: 600;
+}

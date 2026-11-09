@@ -3,6 +3,7 @@
  * undo/redo history, and the library actions. Switching songs starts a fresh history.
  */
 import { useEffect, useState } from 'react';
+import { songFromLink } from '../share/link';
 import { createSong, type Song, type SongSetup } from '../song/song';
 import { canRedo, canUndo, push, redo, startHistory, undo, type History } from './history';
 import { addSong, clearDeleted, currentSong, deleteSong, duplicateSong, migrateLibrary, openSong, putSong, renameSong, updateCurrent, type Library } from './library';
@@ -14,6 +15,8 @@ const OLD_SONG_KEY = 'guitar-cords:current-song';
 interface State {
   lib: Library;
   history: History<Song>;
+  /** Title of a song that arrived in a share link when the app opened. */
+  arrived?: string;
 }
 
 const read = (key: string) => {
@@ -25,8 +28,10 @@ const read = (key: string) => {
 };
 
 function load(): State {
-  const lib = migrateLibrary(read(LIBRARY_KEY), read(OLD_SONG_KEY));
-  return { lib, history: startHistory(currentSong(lib)) };
+  const stored = migrateLibrary(read(LIBRARY_KEY), read(OLD_SONG_KEY));
+  const shared = songFromLink(window.location.href);
+  const lib = shared ? addSong(stored, shared) : stored;
+  return { lib, history: startHistory(currentSong(lib)), arrived: shared?.title };
 }
 
 /** A library change that may switch the open song: the history restarts on it. */
@@ -68,6 +73,7 @@ export function useLibrary() {
 
   return {
     song: state.history.present,
+    arrivedFromLink: state.arrived ?? null,
     songs: state.lib.songs,
     lib: state.lib,
     update,
@@ -79,6 +85,8 @@ export function useLibrary() {
     create: (setup: SongSetup) => libraryAction((lib) => addSong(lib, createSong(setup))),
     rename: (id: string, title: string) => setState((s) => renameIn(s, id, title)),
     duplicate: (id: string) => libraryAction((lib) => duplicateSong(lib, id)),
+    /** Add a song from elsewhere (import, share link) and open it. */
+    importSong: (song: Song) => libraryAction((lib) => addSong(lib, song)),
     remove: (id: string) => libraryAction((lib) => deleteSong(lib, id)),
     /** Replace the whole library (sync). Keeps the open song's history if it is unchanged. */
     replaceLibrary: (lib: Library) => setState((s) => (currentSong(lib) === currentSong(s.lib) ? { ...s, lib } : withLib(lib))),

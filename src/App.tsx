@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { LibrarySheet } from './library/LibrarySheet';
 import { useLibrary, type LibraryApi } from './library/useLibrary';
 import { AccountSheet, statusText } from './sync/AccountSheet';
+import { PrintSheet } from './share/PrintSheet';
+import { ShareSheet } from './share/ShareSheet';
 import { useSync, type SyncApi } from './sync/useSync';
 import { Sheet } from './components/Sheet';
 import { ChordEditor, type SavedChord } from './editor/ChordEditor';
@@ -55,7 +57,8 @@ type Overlay =
   | { kind: 'setup' }
   | { kind: 'library' }
   | { kind: 'transpose' }
-  | { kind: 'account' };
+  | { kind: 'account' }
+  | { kind: 'share' };
 
 type Apply = (fn: (s: Song) => Song, keepOpen?: boolean) => void;
 
@@ -97,6 +100,19 @@ function useSelectionKeys(selection: BarSelection) {
   }, [selection]);
 }
 
+/** A song arriving in a share link (#song=…) is added to My songs once, and the link is cleaned up. */
+function useSharedLink(library: LibraryApi) {
+  const arrived = library.arrivedFromLink;
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!arrived) return;
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    const t = setTimeout(() => setHidden(true), 6000);
+    return () => clearTimeout(t);
+  }, [arrived]);
+  return arrived && !hidden ? `Added “${arrived}” to My songs.` : null;
+}
+
 /** Ctrl/Cmd+Z undo, Shift+Ctrl/Cmd+Z or Ctrl+Y redo — anywhere in the app. */
 function useUndoKeys(library: LibraryApi) {
   useEffect(() => {
@@ -121,6 +137,7 @@ export function App() {
   const sync = useSync(library, chords);
   const selection = useBarSelection(song, setSong);
   useSelectionKeys(selection);
+  const notice = useSharedLink(library);
   const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply: Apply = (fn, keepOpen = false) => {
@@ -145,6 +162,9 @@ export function App() {
           <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'setup' })}>
             New song
           </button>
+          <button type="button" className="new-song-btn" onClick={() => setOverlay({ kind: 'share' })}>
+            Share
+          </button>
           <button type="button" className="new-song-btn account-btn" aria-label="Account" title={statusText(sync.status)} onClick={() => setOverlay({ kind: 'account' })}>
             <span className={`account-dot is-${sync.status}`} aria-hidden="true" />
             {sync.user ? 'Synced' : 'Sign in'}
@@ -165,6 +185,12 @@ export function App() {
         onTranspose={() => setOverlay({ kind: 'transpose' })}
       />
       <Transport song={song} player={player} onSongChange={setSong} />
+      {notice && (
+        <p className="app-notice" role="status">
+          {notice}
+        </p>
+      )}
+      <PrintSheet song={song} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} library={library} sync={sync} selection={selection} />
     </div>
   );
@@ -193,6 +219,22 @@ const OVERLAYS: OverlayRenderers = {
   bar: (p, o) => <BarOptions {...p} index={o.index} />,
   setup: (p) => <SetupSheet {...p} />,
   library: (p) => <LibraryOverlay {...p} />,
+  share: (p) => (
+    <Sheet label="Share & export" onClose={p.close}>
+      <ShareSheet
+        song={p.song}
+        onImported={(song) => {
+          p.library.importSong(song);
+          p.close();
+        }}
+        onPrint={() => {
+          p.close();
+          setTimeout(() => window.print(), 0);
+        }}
+        onClose={p.close}
+      />
+    </Sheet>
+  ),
   account: (p) => (
     <Sheet label="Account" onClose={p.close}>
       <AccountSheet sync={p.sync} onClose={p.close} />
