@@ -30,3 +30,7 @@ npm run dist           # desktop installer for this OS in release/
 ```
 
 Product notes are in `docs/DESIGN.md` and open work in `docs/BACKLOG.md`.
+
+## License
+
+MIT License. Copyright © 2026 Jishu Technologies Ltd. See [LICENSE](LICENSE).

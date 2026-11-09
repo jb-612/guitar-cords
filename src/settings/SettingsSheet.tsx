@@ -2,6 +2,7 @@
 import { SheetHeader } from '../components/Sheet';
 import type { ChordView, SettingsApi, Theme } from './useSettings';
 import '../song/HitSheet.css';
+import './SettingsSheet.css';
 
 const THEMES: [Theme, string][] = [
   ['system', 'System'],
@@ -59,6 +60,27 @@ export function SettingsSheet({ settings, onClose }: { settings: SettingsApi; on
           </button>
         </div>
       </section>
+      <About />
     </div>
+  );
+}
+
+const COPYRIGHT_YEAR = 2026;
+const LICENSE_URL = 'https://github.com/jb-612/guitar-cords/blob/main/LICENSE';
+
+function About() {
+  return (
+    <section className="hit-section settings-about">
+      <span className="section-label">About</span>
+      <p className="settings-credit">
+        Guitar Cords · © {COPYRIGHT_YEAR} Jishu Technologies Ltd.
+        <br />
+        Free and open source under the{' '}
+        <a href={LICENSE_URL} target="_blank" rel="noreferrer">
+          MIT License
+        </a>
+        .
+      </p>
+    </section>
   );
 }

@@ -58,7 +58,7 @@
   },
   "description": "Mobile-first guitar chord and song editor with tab, score and playback.",
   "author": {
-    "name": "jb-612"
+    "name": "Jishu Technologies Ltd."
   },
   "license": "MIT",
   "homepage": "https://jb-612.github.io/guitar-cords/",
@@ -69,6 +69,7 @@
   "build": {
     "appId": "io.github.jb612.guitarcords",
     "productName": "Guitar Cords",
+    "copyright": "Copyright © 2026 Jishu Technologies Ltd.",
     "directories": {
       "output": "release",
       "buildResources": "build"

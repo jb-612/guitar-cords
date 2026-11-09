@@ -89,4 +89,13 @@ describe('first-run walkthrough', () => {
     await user.click(within(await openSettings(user)).getByRole('button', { name: /show the tips again/i }));
     expect(screen.getByRole('dialog', { name: 'Welcome to Guitar Cords' })).toBeInTheDocument();
   });
+
+  it('credits Jishu Technologies Ltd. and names the MIT License', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await skipTour(user);
+    const sheet = await openSettings(user);
+    expect(within(sheet).getByText(/© \d{4} Jishu Technologies Ltd\./)).toBeInTheDocument();
+    expect(within(sheet).getByRole('link', { name: /MIT License/ })).toHaveAttribute('href', 'https://github.com/jb-612/guitar-cords/blob/main/LICENSE');
+  });
 });

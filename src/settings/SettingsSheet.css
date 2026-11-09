@@ -1,0 +1,11 @@
+.settings-credit {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-credit a {
+  color: var(--brass-strong);
+  text-underline-offset: 2px;
+}
