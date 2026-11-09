@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { SheetHeader } from '../components/Sheet';
 import './HitSheet.css';
 import { COMMON_TIME_SIGNATURES, formatTimeSignature, sameTimeSignature } from './rhythm';
+import { patternsFor } from './patterns';
 import { barTimeSignature, tempoAt, type Song } from './song';
 
 interface Props {
@@ -16,11 +17,12 @@ interface Props {
   onInsert: (where: 'before' | 'after') => void;
   onDuplicate: () => void;
   onMove: (to: number) => void;
+  onPattern: (patternId: string) => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDuplicate, onMove, onDelete, onClose }: Props) {
+export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDuplicate, onMove, onPattern, onDelete, onClose }: Props) {
   const n = index + 1;
   const current = barTimeSignature(song, index);
   const [bpm, setBpm] = useState(String(tempoAt(song, index)));
@@ -28,6 +30,16 @@ export function BarMenu({ song, index, onTimeSignature, onTempo, onInsert, onDup
   return (
     <div className="bar-menu">
       <SheetHeader title={`Bar ${n}`} onClose={onClose} />
+      <section className="hit-section">
+        <span className="section-label">Strum pattern</span>
+        <div className="chip-row">
+          {patternsFor(current).map((p) => (
+            <button key={p.id} type="button" className="name-chip" onClick={() => onPattern(p.id)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </section>
       <section className="hit-section">
         <span className="section-label">Time signature from bar {n}</span>
         <div className="seg wrap" role="radiogroup" aria-label={`Time signature from bar ${n}`}>

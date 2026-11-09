@@ -11,6 +11,7 @@ import { BarMenu } from './song/BarMenu';
 import { ChordPicker } from './song/ChordPicker';
 import { HitSheet } from './song/HitSheet';
 import { barUnits } from './song/rhythm';
+import { applyPattern } from './song/patterns';
 import { SongScreen } from './song/SongScreen';
 import { SongSetup } from './song/SongSetup';
 import { TransposeSheet } from './song/TransposeSheet';
@@ -267,6 +268,7 @@ function BarOptions({ song, close, apply, index }: OverlayProps & { index: numbe
         onInsert={(where) => apply((s) => insertBar(s, where === 'before' ? index : index + 1))}
         onDuplicate={() => apply((s) => duplicateBar(s, index))}
         onMove={(to) => apply((s) => moveBar(s, index, to))}
+        onPattern={(id) => apply((s) => applyPattern(s, index, id))}
         onDelete={() => apply((s) => deleteBar(s, index))}
         onClose={close}
       />

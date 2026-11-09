@@ -208,6 +208,16 @@ describe('App song flow', () => {
     expect(lanes()).toEqual([['G', 'C'], ['G', 'C']]);
   });
 
+  it('applies a strumming pattern to a bar', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addFromLibrary(user, 'G');
+    await user.click(within(bar(1)).getByRole('button', { name: 'Bar 1 options' }));
+    await user.click(screen.getByRole('button', { name: /eighths/i }));
+    expect(lanes()).toEqual([['G', 'G', 'G', 'G', 'G', 'G', 'G', 'G']]);
+    expect(hits(1)[1]).toHaveAccessibleName(/strum up/);
+  });
+
   it('inserts and deletes bars from the bar menu', async () => {
     const user = userEvent.setup();
     render(<App />);
