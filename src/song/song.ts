@@ -11,6 +11,8 @@ import { barUnits, defaultDirection, sameTimeSignature, type TimeSignature } fro
 
 export type Direction = 'down' | 'up';
 export type GuitarSound = 'steel' | 'nylon' | 'electric';
+/** normal strum, palm-muted, or fully muted "chuck" (dead strings). */
+export type Technique = 'normal' | 'palm' | 'muted';
 export type PlayStyle = 'strum' | 'arpeggio';
 export type Sustain = 'ring' | 'cut';
 
@@ -23,6 +25,12 @@ export interface ChordHit {
   direction: Direction;
   style: PlayStyle;
   sustain: Sustain;
+  accent?: boolean;
+  technique?: Technique;
+  /** Three strums (down-up-down) in the time of this hit. */
+  triplet?: boolean;
+  /** Lyric syllable sung on this hit (overrides the bar's lyric line for its bar). */
+  lyric?: string;
 }
 
 export interface RestEvent {
@@ -82,7 +90,7 @@ export interface SongSetup {
   tempo?: number;
 }
 
-export type HitStyle = Partial<Pick<ChordHit, 'direction' | 'style' | 'sustain'>>;
+export type HitStyle = Partial<Pick<ChordHit, 'direction' | 'style' | 'sustain' | 'accent' | 'technique' | 'triplet' | 'lyric'>>;
 
 /** Fewer chords than this is not enough to guess a key from. */
 const MIN_CHORDS_FOR_KEY = 3;

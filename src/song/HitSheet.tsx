@@ -6,6 +6,7 @@
 import { ChordThumb } from '../components/ChordThumb';
 import { SheetHeader } from '../components/Sheet';
 import { NOTE_VALUES, unitsOf, type NoteValue } from './rhythm';
+import { canTriplet } from '../player/alphaTex';
 import type { ChordHit, HitStyle } from './song';
 import './HitSheet.css';
 
@@ -63,6 +64,13 @@ export function HitSheet({ hit, room, onLength, onStyle, onRepeat, onEdit, onDel
       <Choice label="Direction" value={hit.direction} options={[['down', 'Down', '↓'], ['up', 'Up', '↑']]} onChange={(direction) => onStyle({ direction })} />
       <Choice label="Style" value={hit.style} options={[['strum', 'Strum', '≡'], ['arpeggio', 'Arpeggio', '≀']]} onChange={(style) => onStyle({ style })} />
       <Choice label="Ending" value={hit.sustain} options={[['ring', 'Let ring', '◠'], ['cut', 'Cut off', '⌐']]} onChange={(sustain) => onStyle({ sustain })} />
+      <Choice
+        label="Technique"
+        value={hit.technique ?? 'normal'}
+        options={[['normal', 'Normal', '♪'], ['palm', 'Palm mute', 'PM'], ['muted', 'Muted (chuck)', '✕']]}
+        onChange={(technique) => onStyle({ technique })}
+      />
+      <Extras hit={hit} onStyle={onStyle} />
       <div className="hit-actions">
         <button type="button" className="btn primary" onClick={onRepeat}>
           Duplicate
@@ -103,6 +111,34 @@ function Choice<T extends string>({ label, value, options, onChange }: ChoicePro
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+/** Accent, triplet strum and a lyric syllable for this chord. */
+function Extras({ hit, onStyle }: { hit: ChordHit; onStyle: (s: HitStyle) => void }) {
+  return (
+    <section className="hit-section">
+      <div className="chip-row">
+        <label className="mixer-check-inline">
+          <input type="checkbox" checked={!!hit.accent} onChange={(e) => onStyle({ accent: e.target.checked })} />
+          Accent
+        </label>
+        <label className="mixer-check-inline">
+          <input type="checkbox" checked={!!hit.triplet} disabled={!canTriplet(hit.units)} onChange={(e) => onStyle({ triplet: e.target.checked })} />
+          Triplet (3 strums in this time)
+        </label>
+      </div>
+      <label className="hit-section-inline">
+        <span className="section-label">Lyric for this chord</span>
+        <input
+          className="text-input"
+          aria-label="Lyric for this chord"
+          placeholder="e.g. a syllable sung on this strum"
+          value={hit.lyric ?? ''}
+          onChange={(e) => onStyle({ lyric: e.target.value })}
+        />
+      </label>
     </section>
   );
 }

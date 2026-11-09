@@ -61,15 +61,39 @@ const effects = (...parts: (string | false)[]) => {
 
 const restTex = (units: number) => splitUnits(units).map((p) => `r.${p.value}${effects(p.dotted && 'd')}`);
 
-/** A hit: first note carries the strum, chord name and ring/cut; the rest are tied continuations. */
+/** Note effects for a hit's strum: let ring / cut off, accent, palm mute. */
+const noteEffects = (hit: ChordHit) => [hit.sustain === 'ring' ? 'lr' : 'st', hit.accent && 'ac', hit.technique === 'palm' && 'pm'].filter(Boolean).join(' ');
+
+/** A muted "chuck" deadens all six strings. */
+const deadNotes = () => Array.from({ length: STRING_COUNT }, (_, s) => `x.${STRING_COUNT - s}`).join(' ');
+
+const strumNotes = (hit: ChordHit, effect: string) => (hit.technique === 'muted' ? deadNotes() : notes(hit.shape, effect));
+
+/** Triplet: three strums (down-up-down) in the time of two, on the note value a third of the hit's length. */
+const TRIPLET_UNITS = new Set([4, 8, 16, 32]);
+export const canTriplet = (units: number) => TRIPLET_UNITS.has(units);
+
+function tripletTex(hit: ChordHit, name: string | null): string[] {
+  const value = (32 / hit.units) * 2;
+  const brushes = hit.direction === 'up' ? ['bu', 'bd', 'bu'] : ['bd', 'bu', 'bd'];
+  return brushes.map((brush, i) => `(${strumNotes(hit, noteEffects(hit))}).${value}${effects('tu 3', i === 0 && name !== null && `ch ${quoted(name)}`, brush)}`);
+}
+
+/** A hit: first note carries the strum, chord name and articulation; the rest are tied continuations. */
 function hitTex(hit: ChordHit, name: string | null): string[] {
-  if (sounding(hit.shape).length === 0) return restTex(hit.units);
-  const sustain = hit.sustain === 'ring' ? 'lr' : 'st';
+  if (beatsOf(hit) === 0) return restTex(hit.units);
+  if (hit.triplet && canTriplet(hit.units)) return tripletTex(hit, name);
   return splitUnits(hit.units).map((p: NotePart, i) =>
     i === 0
-      ? `(${notes(hit.shape, sustain)}).${p.value}${effects(p.dotted && 'd', name !== null && `ch ${quoted(name)}`, BRUSH[`${hit.style}-${hit.direction}`]!)}`
-      : `(${notes(hit.shape, 't')}).${p.value}${effects(p.dotted && 'd')}`,
+      ? `(${strumNotes(hit, noteEffects(hit))}).${p.value}${effects(p.dotted && 'd', name !== null && `ch ${quoted(name)}`, BRUSH[`${hit.style}-${hit.direction}`]!)}`
+      : `(${strumNotes(hit, 't')}).${p.value}${effects(p.dotted && 'd')}`,
   );
+}
+
+/** Sounding beats a hit becomes (rests carry no lyrics in alphaTab). */
+function beatsOf(hit: ChordHit): number {
+  if (hit.technique !== 'muted' && sounding(hit.shape).length === 0) return 0;
+  return hit.triplet && canTriplet(hit.units) ? 3 : splitUnits(hit.units).length;
 }
 
 interface Writer {
@@ -100,12 +124,17 @@ function barTex(bar: Bar, w: Writer): string {
   return [...prefix, ...body].join(' ');
 }
 
-/** One lyric token per sounding note (alphaTab skips rests): the bar's line first, blanks after. */
+const blanks = (n: number) => Array.from({ length: Math.max(0, n) }, () => '+');
+
+/**
+ * One lyric token per sounding beat (alphaTab skips rests). With lyrics on chords, each
+ * chord's lyric goes on its first beat; otherwise the bar's line goes on the first beat.
+ */
 function barLyrics(bar: Bar): string[] {
-  const strums = bar.events
-    .filter((e): e is ChordHit => e.kind === 'chord' && sounding(e.shape).length > 0)
-    .reduce((n, h) => n + splitUnits(h.units).length, 0);
-  return strums === 0 ? [] : [lyricToken(bar.lyrics), ...Array.from({ length: strums - 1 }, () => '+')];
+  const hits = bar.events.filter((e): e is ChordHit => e.kind === 'chord');
+  if (hits.some((h) => h.lyric)) return hits.flatMap((h) => (beatsOf(h) ? [lyricToken(h.lyric ?? ''), ...blanks(beatsOf(h) - 1)] : []));
+  const strums = hits.reduce((n, h) => n + beatsOf(h), 0);
+  return strums === 0 ? [] : [lyricToken(bar.lyrics), ...blanks(strums - 1)];
 }
 
 /** Score and guitar-track metadata. */

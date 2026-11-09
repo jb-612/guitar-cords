@@ -128,4 +128,41 @@ describe('songToAlphaTex', () => {
     expect(bars.every((b) => b.tripletFeel === at.model.TripletFeel.Triplet8th)).toBe(true);
     expect(parse(gcd()).masterBars[0]!.tripletFeel).toBe(at.model.TripletFeel.NoTripletFeel);
   });
+
+  describe('articulation, triplets and lyrics per chord', () => {
+    const one = (style: Parameters<typeof setHitStyle>[2], units?: number) => {
+      const s0 = add(song(), 'G', '320003', units);
+      return setHitStyle(s0, s0.bars[0]!.events[0]!.id, style);
+    };
+
+    it('accents a strum', () => {
+      expect(beats(one({ accent: true }), 0)[0]!.notes.every((n) => n.accentuated > 0)).toBe(true);
+    });
+
+    it('palm-mutes a strum', () => {
+      expect(beats(one({ technique: 'palm' }), 0)[0]!.notes.every((n) => n.isPalmMute)).toBe(true);
+    });
+
+    it('plays a muted "chuck": every string dead', () => {
+      const notes = beats(one({ technique: 'muted' }), 0)[0]!.notes;
+      expect(notes).toHaveLength(6);
+      expect(notes.every((n) => n.isDead)).toBe(true);
+    });
+
+    it('splits a triplet hit into three strums in the time of two, down-up-down', () => {
+      const b = beats(one({ triplet: true }, 8), 0).slice(0, 3);
+      expect(b.map((x) => x.tupletNumerator)).toEqual([3, 3, 3]);
+      expect(b.reduce((n, x) => n + x.playbackDuration, 0)).toBe(960);
+      expect(b.map((x) => x.brushType)).toEqual([at.model.BrushType.BrushDown, at.model.BrushType.BrushUp, at.model.BrushType.BrushDown]);
+      expect(b.map((x) => x.chord?.name ?? '')).toEqual(['G', '', '']);
+    });
+
+    it('puts per-chord lyrics on their own strums instead of the bar line', () => {
+      const s0 = add(add(song(), 'G', '320003', 16), 'C', 'x32010', 16);
+      let s = setLyrics(s0, s0.bars[0]!.id, 'ignored when chords have lyrics');
+      s = setHitStyle(s, s.bars[0]!.events[0]!.id, { lyric: 'Hel-' });
+      s = setHitStyle(s, s.bars[0]!.events[1]!.id, { lyric: 'lo' });
+      expect(beats(s, 0).map((b) => b.lyrics?.[0]?.trim())).toEqual(['Hel‑', 'lo']);
+    });
+  });
 });

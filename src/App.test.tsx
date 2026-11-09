@@ -102,6 +102,19 @@ describe('App song flow', () => {
     expect(hits(1)[0]).toHaveAccessibleName('G, whole, arpeggio up, cut off');
   });
 
+  it('sets accent, technique, triplet and a lyric on a hit', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addFromLibrary(user, 'G', 'Quarter');
+    const sheet = await openHit(user, 1);
+    await user.click(within(sheet).getByRole('checkbox', { name: 'Accent' }));
+    await choose(user, sheet, 'Technique', 'Palm mute');
+    await user.click(within(sheet).getByRole('checkbox', { name: /triplet/i }));
+    await user.type(within(sheet).getByRole('textbox', { name: 'Lyric for this chord' }), 'Hey');
+    expect(hits(1)[0]).toHaveAccessibleName(/accent.*palm mute.*triplet/);
+    expect(within(bar(1)).getByText('Hey')).toBeInTheDocument();
+  });
+
   it('duplicates a hit to build a strumming pattern', async () => {
     const user = userEvent.setup();
     render(<App />);

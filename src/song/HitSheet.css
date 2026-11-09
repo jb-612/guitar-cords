@@ -225,3 +225,9 @@
   color: #4f8a4b;
   font-weight: 600;
 }
+
+.hit-section-inline {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}

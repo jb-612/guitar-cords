@@ -575,7 +575,18 @@ function DragGhost({ view }: { view: DragView }) {
 const QUARTER = unitsOf(4);
 const ARROWS = { 'strum-down': '↓', 'strum-up': '↑', 'arpeggio-down': '⇣', 'arpeggio-up': '⇡' } as const;
 
-export const hitLabel = (h: ChordHit) => `${h.symbol}, ${lengthName(h.units)}, ${h.style} ${h.direction}${h.sustain === 'cut' ? ', cut off' : ''}`;
+const TECHNIQUE_LABEL: Record<string, string> = { palm: 'palm mute', muted: 'muted chuck' };
+
+export const hitLabel = (h: ChordHit) =>
+  [
+    `${h.symbol}, ${lengthName(h.units)}, ${h.style} ${h.direction}`,
+    h.sustain === 'cut' && 'cut off',
+    h.accent && 'accent',
+    h.technique && TECHNIQUE_LABEL[h.technique],
+    h.triplet && 'triplet',
+  ]
+    .filter(Boolean)
+    .join(', ');
 
 const slotClass = (hit: ChordHit, isChange: boolean, dnd: Dnd) =>
   ['lane-slot hit', isChange && 'is-change', hit.sustain === 'cut' && 'is-cut', dnd.dropTarget && 'is-drop-target', dnd.dragging && 'is-dragging'].filter(Boolean).join(' ');
@@ -606,12 +617,11 @@ function HitSlot({ hit, isChange, barStart, numeral, dnd, onTap, onPointerDown }
     >
       <SlotName hit={hit} named={isChange || barStart} numeral={numeral} />
       {isChange && hit.units >= QUARTER && <ChordThumb shape={hit.shape} />}
-      <span className="hit-arrow" aria-hidden="true">
-        {ARROWS[`${hit.style}-${hit.direction}`]}
-      </span>
+      <HitMarks hit={hit} />
       <span className="hit-len" aria-hidden="true">
         {shortLength(hit.units)}
       </span>
+      {hit.lyric && <span className="hit-lyric">{hit.lyric}</span>}
     </button>
   );
 }
@@ -623,6 +633,19 @@ function SlotName({ hit, named, numeral }: { hit: ChordHit; named: boolean; nume
       <ChordSymbol symbol={hit.symbol} inline />
       <Numeral value={numeral} />
     </>
+  );
+}
+
+/** Strum arrow (✕ for a muted chuck), with accent ›, palm-mute PM and triplet ³ marks. */
+function HitMarks({ hit }: { hit: ChordHit }) {
+  const arrow = hit.technique === 'muted' ? '✕' : ARROWS[`${hit.style}-${hit.direction}`];
+  return (
+    <span className="hit-arrow" aria-hidden="true">
+      {hit.accent && <span className="hit-accent">›</span>}
+      {arrow}
+      {hit.triplet && <sup className="hit-triplet">3</sup>}
+      {hit.technique === 'palm' && <span className="hit-pm">PM</span>}
+    </span>
   );
 }
 
