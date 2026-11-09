@@ -53,7 +53,7 @@ Planned next layers:
 1. ✅ Project scaffold and music-theory core with tests
 2. ✅ Chord editor UI (diagram, tap/drag, finger picker, live naming) and the design system (tokens, typography, motion)
 3. ✅ Song model, chord-per-bar song canvas, lyrics, key suggestion (local autosave; Firebase in step 6)
-4. alphaTab integration: tab and score views, playback, tempo, loop, metronome, practice mode
+4. ✅ alphaTab integration: tab and score views, playback, tempo, loop, metronome, practice mode (dev server verified; packaged-Electron asset loading is part of step 7)
 5. Transpose and change-key UI with voicing suggestions
 6. Firebase auth and sync
 7. Electron packaging (electron-builder) and PWA install for mobile

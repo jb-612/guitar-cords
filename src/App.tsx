@@ -4,6 +4,8 @@ import { ChordEditor, type SavedChord } from './editor/ChordEditor';
 import { ChordActions } from './song/ChordActions';
 import { ChordPicker } from './song/ChordPicker';
 import { SongScreen } from './song/SongScreen';
+import { Transport } from './player/Transport';
+import { usePlayer } from './player/usePlayer';
 import { addChord, findChord, removeChord, replaceChord, setChordBeats, type ChordChoice, type Song, type SongChord } from './song/song';
 import { useMyChords } from './song/useMyChords';
 import { useStoredSong } from './song/useStoredSong';
@@ -20,6 +22,7 @@ export function App() {
   const [song, setSong] = useStoredSong();
   const [overlay, setOverlay] = useState<Overlay>({ kind: 'none' });
   const { myChords, remember } = useMyChords();
+  const player = usePlayer(song);
   const close = useCallback(() => setOverlay({ kind: 'none' }), []);
   const apply = (fn: (s: Song) => Song) => {
     setSong(fn);
@@ -35,9 +38,11 @@ export function App() {
       <SongScreen
         song={song}
         update={setSong}
+        player={player}
         onAddChord={() => setOverlay({ kind: 'picker' })}
         onChordTap={(chordId) => setOverlay({ kind: 'actions', chordId })}
       />
+      <Transport song={song} player={player} />
       <OverlayView overlay={overlay} song={song} myChords={myChords} remember={remember} setOverlay={setOverlay} close={close} apply={apply} />
     </div>
   );
