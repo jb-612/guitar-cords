@@ -51,7 +51,7 @@ Planned next layers:
 ## Milestones
 
 1. ✅ Project scaffold and music-theory core with tests
-2. Chord editor UI (diagram, tap/drag, finger picker, live naming) and the design system (tokens, typography, motion)
+2. ✅ Chord editor UI (diagram, tap/drag, finger picker, live naming) and the design system (tokens, typography, motion)
 3. Song model, chord-per-bar song canvas, lyrics, key suggestion
 4. alphaTab integration: tab and score views, playback, tempo, loop, metronome, practice mode
 5. Transpose and change-key UI with voicing suggestions

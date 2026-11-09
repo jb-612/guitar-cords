@@ -65,9 +65,13 @@ export function moveDot(shape: ChordShape, fromString: number, to: { string: num
   const occupied = to.string !== fromString && !!dotOn(shape, to.string);
   if (!dot || occupied || !onBoard(to)) return shape;
   return {
-    dots: [...withoutString(shape, fromString), { ...dot, ...to }],
+    dots: [...withoutString(shape, fromString), { ...dot, string: to.string, fret: to.fret }],
     muted: unmute(shape.muted, to.string),
   };
+}
+
+export function removeDot(shape: ChordShape, string: number): ChordShape {
+  return { ...shape, dots: withoutString(shape, string) };
 }
 
 /** Toggle a string between muted and open. Muting a fretted string removes its dot. */

@@ -3,6 +3,7 @@ import {
   tapString,
   setFinger,
   moveDot,
+  removeDot,
   toggleMute,
   shiftShape,
   soundingMidi,
@@ -70,6 +71,14 @@ describe('moveDot', () => {
   it('refuses frets below 1', () => {
     const before = tapAll([[1, 1]]);
     expect(moveDot(before, 1, { string: 1, fret: 0 })).toBe(before);
+  });
+});
+
+describe('removeDot', () => {
+  it('removes the dot on a string, leaving it open', () => {
+    const s = removeDot(tapAll([[1, 3], [2, 2]]), 1);
+    expect(s.dots).toEqual([{ string: 2, fret: 2, finger: 2 }]);
+    expect(s.muted).toEqual([]);
   });
 });
 

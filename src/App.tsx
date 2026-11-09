@@ -1,8 +1,14 @@
-// Placeholder shell. The chord editor UI is the next milestone (see docs/DESIGN.md).
+import { ChordEditor } from './editor/ChordEditor';
+import './App.css';
+
 export function App() {
   return (
-    <main>
-      <h1>Guitar Cords</h1>
-    </main>
+    <div className="app">
+      <header className="app-bar">
+        <span className="brand">Guitar Cords</span>
+        <span className="app-bar-title">New chord</span>
+      </header>
+      <ChordEditor />
+    </div>
   );
 }

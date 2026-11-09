@@ -1,0 +1,335 @@
+.editor {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+
+@media (min-width: 760px) {
+  .editor {
+    grid-template-columns: minmax(320px, 400px) 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+}
+
+.card {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
+}
+
+.editor-stage {
+  padding: 20px 16px 16px;
+}
+
+/* Chord name */
+.name-panel {
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.name-hint {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  color: var(--ink-soft);
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+.chord-symbol {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: 'opsz' 144, 'SOFT' 50;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+  animation: name-in var(--t-med) var(--ease-out);
+}
+
+.cs-root {
+  font-size: 64px;
+}
+
+.cs-quality {
+  font-size: 30px;
+  font-weight: 500;
+  vertical-align: 0.95em;
+  margin-left: 2px;
+}
+
+.cs-bass {
+  font-size: 34px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.chord-symbol.is-unknown {
+  font-size: 56px;
+  color: var(--ink-faint);
+}
+
+.chord-symbol.inline {
+  font-size: 18px;
+  font-weight: 600;
+  animation: none;
+}
+
+.name-notes {
+  margin: 8px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.badge {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--brass-strong);
+  background: var(--brass-glow);
+  animation: fade-in var(--t-med) var(--ease-out);
+}
+
+/* Position stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.stepper-value {
+  min-width: 120px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--brass);
+}
+
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Side panel */
+.editor-side {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+
+.section-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: color var(--t-fast);
+}
+
+.finger-row,
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.finger-chip {
+  flex: 1 1 0;
+  min-width: 52px;
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    opacity var(--t-med) var(--ease-out);
+}
+
+.finger-num {
+  font-size: 18px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.finger-name {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.finger-chip:hover:not(:disabled) {
+  border-color: var(--brass);
+}
+
+.finger-chip:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.finger-chip[aria-checked='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-raised);
+  animation: pop-soft var(--t-med) var(--ease-spring);
+}
+
+.finger-chip[aria-checked='true'] .finger-name {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.finger-chip.remove .finger-num {
+  color: var(--danger);
+}
+
+.finger-picker.is-disabled .finger-chip {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.name-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  cursor: pointer;
+  animation: fade-in var(--t-med) var(--ease-out);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.name-chip:hover {
+  border-color: var(--brass);
+}
+
+.name-chip:active {
+  transform: scale(0.96);
+}
+
+.key-select select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--hairline);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius-m);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    opacity var(--t-fast);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--hairline);
+}
+
+.btn.primary {
+  border: 1px solid var(--brass-strong);
+  background: linear-gradient(180deg, var(--brass), var(--brass-strong));
+  color: #fffaf0;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3) inset, 0 6px 16px -8px var(--brass-strong);
+}
+
+.btn.primary:hover:not(:disabled) {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.3) inset, 0 10px 20px -8px var(--brass-strong);
+}
+
+.editor-help {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+@keyframes name-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+    filter: blur(2px);
+  }
+}
+
+@keyframes pop-soft {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.55;
+  }
+}

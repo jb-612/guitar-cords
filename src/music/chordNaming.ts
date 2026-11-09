@@ -15,6 +15,8 @@ export interface ChordName {
   bass?: string;
   /** All chord tones belong to the given key (false when no key was given). */
   inKey: boolean;
+  /** An everyday chord-chart type (not e.g. "m#5"). */
+  common: boolean;
   /** Lower is better. */
   score: number;
 }
@@ -46,7 +48,7 @@ function toCandidate(detected: string, key?: string): ChordName | null {
   const { root, type, bass } = parsed;
   const inKey = isInKey(root, type, key);
   const score = typeRank(type) + (bass ? SLASH_PENALTY : 0) + (key && !inKey ? OUT_OF_KEY_PENALTY : 0);
-  return { symbol: formatChord(root, type, bass), root, type, bass, inKey, score };
+  return { symbol: formatChord(root, type, bass), root, type, bass, inKey, common: COMMON_TYPES.includes(type), score };
 }
 
 /** Rank names for pitch classes given bass first (e.g. ['E', 'C', 'G']). */

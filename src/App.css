@@ -1,0 +1,29 @@
+.app {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.app-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rosewood);
+}
+
+.app-bar-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}

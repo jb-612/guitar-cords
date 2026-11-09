@@ -43,6 +43,14 @@ describe('nameChord', () => {
   });
 });
 
+describe('common flag', () => {
+  it('marks everyday chord types as common and exotic ones as not', () => {
+    const names = nameChord(shapeFromFrets('x32010'));
+    expect(names.find((n) => n.symbol === 'C')?.common).toBe(true);
+    expect(names.find((n) => n.symbol === 'Em#5/C')?.common).toBe(false);
+  });
+});
+
 describe('nameNotes', () => {
   it('names a power chord', () => {
     expect(nameNotes(['E', 'B'])[0]?.symbol).toBe('E5');

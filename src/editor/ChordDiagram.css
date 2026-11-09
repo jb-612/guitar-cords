@@ -1,0 +1,197 @@
+.diagram {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+  overflow: visible;
+  border-radius: var(--radius-m);
+}
+
+.board-bg {
+  fill: var(--paper-sunk);
+  opacity: 0.55;
+}
+
+.fret {
+  stroke: var(--ink-soft);
+  stroke-width: 1.2;
+  opacity: 0.55;
+}
+
+.nut {
+  fill: var(--ink);
+}
+
+.string {
+  stroke: var(--string-plain);
+  stroke-linecap: round;
+}
+
+.string.wound {
+  stroke: var(--string-wound);
+}
+
+.inlay circle,
+circle.inlay {
+  fill: var(--ink-faint);
+  opacity: 0.35;
+}
+
+.fret-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-style: italic;
+  fill: var(--ink-soft);
+  animation: fade-slide var(--t-med) var(--ease-out);
+}
+
+/* Open / mute toggles above the nut */
+.nut-toggle {
+  cursor: pointer;
+}
+
+.nut-mark {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop var(--t-med) var(--ease-spring);
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.nut-mark.mute {
+  stroke: var(--rosewood);
+  stroke-width: 2.2;
+}
+
+.nut-toggle.is-fretted .nut-mark.open {
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .nut-toggle.is-fretted:hover .nut-mark.open {
+    opacity: 0.25;
+  }
+}
+
+/* Tap targets */
+.cell {
+  cursor: pointer;
+}
+
+.cell-ghost {
+  fill: var(--ink);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.6);
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .cell:hover .cell-ghost {
+    opacity: 0.12;
+    transform: scale(1);
+  }
+}
+
+.is-dragging .cell:hover .cell-ghost {
+  opacity: 0.2;
+  fill: var(--brass);
+}
+
+/* Finger dots */
+.barre {
+  fill: var(--dot);
+  opacity: 0.9;
+  animation: fade-in var(--t-med) var(--ease-out);
+}
+
+.dot {
+  cursor: grab;
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.dot-body {
+  animation: pop var(--t-med) var(--ease-spring);
+}
+
+.dot-fill {
+  fill: var(--dot);
+  transition: fill var(--t-fast) var(--ease-out);
+}
+
+.dot-label {
+  fill: var(--dot-text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.dot.is-thumb .dot-fill {
+  fill: var(--rosewood);
+}
+
+.dot-ring {
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 2.5;
+  opacity: 0;
+  transform: scale(0.7);
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-med) var(--ease-spring);
+}
+
+.dot.is-selected .dot-ring {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dot.is-lifted {
+  opacity: 0.25;
+}
+
+.drag-ghost {
+  pointer-events: none;
+  transition: none;
+  filter: drop-shadow(0 8px 10px rgb(40 25 10 / 0.35));
+  cursor: grabbing;
+}
+
+.drag-ghost .dot-fill {
+  fill: var(--brass-strong);
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
